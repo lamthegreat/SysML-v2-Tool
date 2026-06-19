@@ -35,12 +35,11 @@ export function BddCanvas() {
   const nodes = useMemo<Node[]>(() => {
     const members = childrenOf(model, getRoot(model).id);
     const result: Node[] = [];
-    members.forEach((el, i) => {
+    members.forEach((el) => {
       const qn = qualifiedName(model, el.id);
-      const position = layout[qn] ?? {
-        x: 60 + (i % 4) * 280,
-        y: 60 + Math.floor(i / 4) * 240,
-      };
+      // Only render elements explicitly placed on this diagram.
+      if (!(qn in layout)) return;
+      const position = layout[qn];
       if (el.kind === "partDef") {
         const kids = childrenOf(model, el.id);
         const data: BddNodeData = {
