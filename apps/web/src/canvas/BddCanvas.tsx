@@ -18,14 +18,14 @@ import {
   type AttributeUsage,
   type PartUsage,
 } from "@sygil/model";
-import { useSygil } from "../store/sygilStore.js";
+import { useSygil, getActiveLayout } from "../store/sygilStore.js";
 import { BddNode, RawNode, type BddNodeData } from "./BddNode.js";
 
 const nodeTypes = { bdd: BddNode, raw: RawNode };
 
 export function BddCanvas() {
   const model = useSygil((s) => s.model);
-  const layout = useSygil((s) => s.layout);
+  const layout = useSygil((s) => getActiveLayout(s));
   const setNodePosition = useSygil((s) => s.setNodePosition);
   const addSpecialization = useSygil((s) => s.addSpecialization);
   const removeElement = useSygil((s) => s.removeElement);

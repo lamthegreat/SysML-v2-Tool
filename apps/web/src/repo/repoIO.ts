@@ -1,41 +1,37 @@
-import { getRoot, partDefs, qualifiedName, type Model } from "@sygil/model";
+import { getRoot, partDefs, qualifiedName, shortId, type Model } from "@sygil/model";
 import { parse, serialize } from "@sygil/sysml-notation";
 import type { CommitResult, GitProvider } from "@sygil/git";
-import type { Layout, NodePos } from "../store/sygilStore.js";
+import type { DiagramMeta, NodePos } from "../store/sygilStore.js";
+
+interface ViewDiagram {
+  id: string;
+  kind: string;
+  name: string;
+  nodes: Record<string, NodePos>;
+  edges: Record<string, unknown>;
+}
 
 interface ViewFile {
   schema: number;
   package: string;
-  diagrams: Array<{
-    id: string;
-    kind: string;
-    name: string;
-    nodes: Record<string, NodePos>;
-    edges: Record<string, unknown>;
-  }>;
+  diagrams: ViewDiagram[];
 }
 
-/**
- * Save = one atomic commit bundling the `.sysml` model file and its sibling
- * `.view.json` (geometry), keyed by qualified name so the diagram restores
- * exactly on reload.
- */
 export async function saveToRepo(
   provider: GitProvider,
   model: Model,
-  layout: Layout,
+  diagrams: DiagramMeta[],
 ): Promise<CommitResult> {
   const name = getRoot(model).name;
-  const nodes: Record<string, NodePos> = {};
-  for (const pd of partDefs(model)) {
-    const qn = qualifiedName(model, pd.id);
-    if (layout[qn]) nodes[qn] = layout[qn];
-  }
-  const view: ViewFile = {
-    schema: 1,
-    package: name,
-    diagrams: [{ id: "bdd-main", kind: "bdd", name: `${name} BDD`, nodes, edges: {} }],
-  };
+  const viewDiagrams: ViewDiagram[] = diagrams.map((d) => {
+    const nodes: Record<string, NodePos> = {};
+    for (const pd of partDefs(model)) {
+      const qn = qualifiedName(model, pd.id);
+      if (d.layout[qn]) nodes[qn] = d.layout[qn];
+    }
+    return { id: d.id, kind: d.kind, name: d.name, nodes, edges: {} };
+  });
+  const view: ViewFile = { schema: 1, package: name, diagrams: viewDiagrams };
   return provider.writeFiles(
     [
       { path: `model/${name}.sysml`, content: serialize(model) },
@@ -48,18 +44,26 @@ export async function saveToRepo(
 export async function loadFromRepo(
   provider: GitProvider,
   packageName: string,
-): Promise<{ model: Model; layout: Layout }> {
+): Promise<{ model: Model; diagrams: DiagramMeta[] }> {
   const text = await provider.readFile(`model/${packageName}.sysml`);
   const { model, errors } = parse(text);
   if (!model) throw new Error(`Parse failed: ${errors[0]?.message ?? "unknown"}`);
-  let layout: Layout = {};
+  let diagrams: DiagramMeta[] = [];
   try {
     const view = JSON.parse(
       await provider.readFile(`views/${packageName}.view.json`),
     ) as ViewFile;
-    layout = view.diagrams[0]?.nodes ?? {};
+    diagrams = view.diagrams.map((d) => ({
+      id: d.id,
+      kind: "bdd" as const,
+      name: d.name,
+      layout: d.nodes ?? {},
+    }));
   } catch {
-    // No view file yet — diagram will auto-layout.
+    // No view file yet — will get a default diagram from the store.
   }
-  return { model, layout };
+  if (diagrams.length === 0) {
+    diagrams = [{ id: shortId(), kind: "bdd", name: "Main BDD", layout: {} }];
+  }
+  return { model, diagrams };
 }
