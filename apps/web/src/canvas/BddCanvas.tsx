@@ -25,6 +25,7 @@ const nodeTypes = { bdd: BddNode, raw: RawNode };
 
 export function BddCanvas() {
   const model = useSygil((s) => s.model);
+  const activeDiagramId = useSygil((s) => s.activeDiagramId);
   const layout = useSygil((s) => getActiveLayout(s));
   const setNodePosition = useSygil((s) => s.setNodePosition);
   const addSpecialization = useSygil((s) => s.addSpecialization);
@@ -134,6 +135,7 @@ export function BddCanvas() {
 
   return (
     <ReactFlow
+      key={activeDiagramId}
       nodes={nodes}
       edges={edges}
       nodeTypes={nodeTypes}
