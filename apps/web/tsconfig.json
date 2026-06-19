@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "noEmit": true,
+    "types": ["vite/client", "node"],
+    "paths": {
+      "@sygil/model": ["../../packages/model/src/index.ts"],
+      "@sygil/sysml-notation": ["../../packages/sysml-notation/src/index.ts"],
+      "@sygil/git": ["../../packages/git/src/index.ts"],
+      "@sygil/export": ["../../packages/export/src/index.ts"]
+    }
+  },
+  "include": ["src", "vite.config.ts"]
+}

@@ -1,0 +1,22 @@
+{
+  "name": "sygil",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Sygil — open-source, browser-based, Git-native SysML v2 modeling tool",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm --filter @sygil/web dev",
+    "build": "pnpm -r build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.8"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
