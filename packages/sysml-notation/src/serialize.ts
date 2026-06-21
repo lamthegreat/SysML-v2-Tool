@@ -42,9 +42,15 @@ function serializeElement(model: Model, el: Element, depth: number): string {
         .split("\n")
         .map((line) => (line.length ? pad + line : line))
         .join("\n");
-    case "package":
-      // Nested packages are not part of the MVP subset; treat defensively.
-      return `${pad}package ${el.name};`;
+    case "package": {
+      const header = `package ${el.name}`;
+      const members = childrenOf(model, el.id);
+      if (members.length === 0) return `${pad}${header};`;
+      const body = members
+        .map((m) => serializeElement(model, m, depth + 1))
+        .join("\n");
+      return `${pad}${header} {\n${body}\n${pad}}`;
+    }
   }
 }
 

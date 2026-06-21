@@ -122,7 +122,8 @@ function TreeNode({
   const selectedId = useSygil((s) => s.selectedId);
   const setSelected = useSygil((s) => s.setSelected);
   const renameElement = useSygil((s) => s.renameElement);
-  const addBlock = useSygil((s) => s.addBlock);
+  const addPackageUnder = useSygil((s) => s.addPackageUnder);
+  const addPartDefUnder = useSygil((s) => s.addPartDefUnder);
   const addAttr = useSygil((s) => s.addAttributeTo);
   const addPart = useSygil((s) => s.addPartTo);
   const removeEl = useSygil((s) => s.removeElement);
@@ -138,8 +139,13 @@ function TreeNode({
     switch (el.kind) {
       case "package":
         return [
-          { label: "Add Part Def", action: () => addBlock() },
+          { label: "Add Package", action: () => addPackageUnder(el.id) },
+          { label: "Add Part Def", action: () => addPartDefUnder(el.id) },
           { label: "Add Diagram", action: () => addDiagram() },
+          // The root package can't be deleted; nested ones can.
+          ...(el.ownerId
+            ? [{ label: "Delete", action: () => removeEl(el.id), danger: true }]
+            : []),
         ];
       case "partDef":
         return [
@@ -153,7 +159,7 @@ function TreeNode({
       default:
         return [];
     }
-  }, [el, addBlock, addAttr, addPart, removeEl, addDiagram]);
+  }, [el, addPackageUnder, addPartDefUnder, addAttr, addPart, removeEl, addDiagram]);
 
   return (
     <div>

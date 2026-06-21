@@ -1,9 +1,11 @@
 import { create } from "zustand";
 import {
   addAttribute,
+  addPackage,
   addPartDef,
   addPartUsage,
   byQualifiedName,
+  childrenOf,
   createModel,
   getElement,
   partDefs,
@@ -44,6 +46,8 @@ interface SygilState {
   setNodePosition: (qname: string, pos: NodePos) => void;
 
   addBlock: () => void;
+  addPackageUnder: (ownerId: string) => void;
+  addPartDefUnder: (ownerId: string) => void;
   renameElement: (id: string, name: string) => void;
   retypeAttribute: (id: string, dataType: string) => void;
   addAttributeTo: (partId: string) => void;
@@ -55,6 +59,15 @@ interface SygilState {
   renameDiagram: (id: string, name: string) => void;
   deleteDiagram: (id: string) => void;
   setActiveDiagram: (id: string) => void;
+}
+
+/** A name unique among the children of `ownerId` (e.g. "NewBlock", "NewBlock1"). */
+function uniqueChildName(model: Model, ownerId: string, base: string): string {
+  const existing = new Set(childrenOf(model, ownerId).map((c) => c.name));
+  if (!existing.has(base)) return base;
+  let i = 1;
+  while (existing.has(`${base}${i}`)) i++;
+  return `${base}${i}`;
 }
 
 function autoPos(index: number): NodePos {
@@ -229,11 +242,32 @@ export const useSygil = create<SygilState>((set, get) => {
       })),
 
     addBlock: () => {
-      const existing = new Set(partDefs(get().model).map((p) => p.name));
-      let i = 1;
-      let name = "NewBlock";
-      while (existing.has(name)) name = `NewBlock${i++}`;
-      applyFromDiagram(addPartDef(get().model, name).model);
+      const model = get().model;
+      const name = uniqueChildName(model, model.rootId, "NewBlock");
+      applyFromDiagram(addPartDef(model, name, [], model.rootId).model);
+    },
+
+    addPartDefUnder: (ownerId) => {
+      const model = get().model;
+      const owner = getElement(model, ownerId);
+      if (!owner || owner.kind !== "package") return;
+      const name = uniqueChildName(model, ownerId, "NewBlock");
+      applyFromDiagram(addPartDef(model, name, [], ownerId).model);
+    },
+
+    addPackageUnder: (ownerId) => {
+      const model = get().model;
+      const owner = getElement(model, ownerId);
+      if (!owner || owner.kind !== "package") return;
+      const name = uniqueChildName(model, ownerId, "NewPackage");
+      // Packages aren't diagram nodes, so a plain model update is enough.
+      const next = addPackage(model, name, ownerId).model;
+      set((s) => ({
+        model: next,
+        text: serialize(next),
+        errors: [],
+        diagrams: pruneAllDiagrams(next, s.diagrams),
+      }));
     },
 
     renameElement: (id, name) => {
