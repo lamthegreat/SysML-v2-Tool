@@ -7,6 +7,7 @@ interface ViewDiagram {
   id: string;
   kind: string;
   name: string;
+  packageId?: string;
   nodes: Record<string, NodePos>;
   edges: Record<string, unknown>;
 }
@@ -29,7 +30,7 @@ export async function saveToRepo(
       const qn = qualifiedName(model, pd.id);
       if (d.layout[qn]) nodes[qn] = d.layout[qn];
     }
-    return { id: d.id, kind: d.kind, name: d.name, nodes, edges: {} };
+    return { id: d.id, kind: d.kind, name: d.name, packageId: d.packageId, nodes, edges: {} };
   });
   const view: ViewFile = { schema: 1, package: name, diagrams: viewDiagrams };
   return provider.writeFiles(
@@ -57,13 +58,14 @@ export async function loadFromRepo(
       id: d.id,
       kind: "bdd" as const,
       name: d.name,
+      packageId: d.packageId ?? model.rootId,
       layout: d.nodes ?? {},
     }));
   } catch {
     // No view file yet — will get a default diagram from the store.
   }
   if (diagrams.length === 0) {
-    diagrams = [{ id: shortId(), kind: "bdd", name: "Main BDD", layout: {} }];
+    diagrams = [{ id: shortId(), kind: "bdd", name: "Main BDD", packageId: model.rootId, layout: {} }];
   }
   return { model, diagrams };
 }

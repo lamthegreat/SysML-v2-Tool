@@ -43,6 +43,12 @@ export function partDefs(model: Model): PartDef[] {
   );
 }
 
+export function allPackages(model: Model): PackageEl[] {
+  return Object.values(model.elements).filter(
+    (e): e is PackageEl => e.kind === "package",
+  );
+}
+
 /**
  * Qualified name, `::`-separated from the root package down to `id`.
  * This is the stable key used by view metadata and cross-surface reconciliation.

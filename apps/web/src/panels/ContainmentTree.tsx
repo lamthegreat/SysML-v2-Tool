@@ -1,7 +1,9 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
+  allPackages,
   childrenOf,
   getRoot,
+  qualifiedName,
   type Element,
   type Model,
 } from "@sygil/model";
@@ -108,6 +110,103 @@ function elementLabel(el: Element): string {
   }
 }
 
+// ── Diagrams inline under a package ────────────────────────────────────────
+
+function DiagramsInline({
+  packageId,
+  depth,
+  onCtx,
+}: {
+  packageId: string;
+  depth: number;
+  onCtx: (e: React.MouseEvent, items: MenuItem[]) => void;
+}) {
+  const allDiagrams = useSygil((s) => s.diagrams);
+  const diagrams = useMemo(
+    () => allDiagrams.filter((d) => d.packageId === packageId),
+    [allDiagrams, packageId],
+  );
+  const activeDiagramId = useSygil((s) => s.activeDiagramId);
+  const model = useSygil((s) => s.model);
+  const setActive = useSygil((s) => s.setActiveDiagram);
+  const addDiagram = useSygil((s) => s.addDiagram);
+  const renameDiagram = useSygil((s) => s.renameDiagram);
+  const deleteDiagram = useSygil((s) => s.deleteDiagram);
+  const moveDiagram = useSygil((s) => s.moveDiagram);
+  const [open, setOpen] = useState(true);
+
+  const hasDiagrams = diagrams.length > 0;
+
+  return (
+    <div>
+      <div
+        className="flex cursor-pointer items-center gap-1 rounded-sm px-1 py-0.5 hover:bg-slate-100"
+        style={{ paddingLeft: depth * 16 + 4 }}
+        onClick={() => setOpen((o) => !o)}
+      >
+        {hasDiagrams ? <ChevronIcon open={open} /> : <span className="w-3" />}
+        <FolderIcon />
+        <span className="text-[11px] font-medium text-slate-500">Diagrams</span>
+      </div>
+      {open && (
+        <>
+          {diagrams.map((d) => {
+            const isActive = d.id === activeDiagramId;
+            const pkgs = allPackages(model);
+            const moveTargets = pkgs.filter((p) => p.id !== packageId);
+            return (
+              <div
+                key={d.id}
+                className={`flex cursor-pointer items-center gap-1 rounded-sm px-1 py-0.5 ${
+                  isActive ? "bg-sky-50 font-semibold text-sky-700" : "hover:bg-slate-100"
+                }`}
+                style={{ paddingLeft: (depth + 1) * 16 + 4 }}
+                onClick={() => setActive(d.id)}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  const items: MenuItem[] = [];
+                  if (moveTargets.length > 0) {
+                    items.push({
+                      label: "Move to",
+                      children: moveTargets.map((p) => ({
+                        label: qualifiedName(model, p.id),
+                        action: () => moveDiagram(d.id, p.id),
+                      })),
+                    });
+                  }
+                  if (allDiagrams.length > 1) {
+                    items.push({ label: "Delete", action: () => deleteDiagram(d.id), danger: true });
+                  }
+                  if (items.length) onCtx(e, items);
+                }}
+              >
+                <DiagramIcon active={isActive} />
+                <EditableText
+                  value={d.name}
+                  onCommit={(n) => renameDiagram(d.id, n)}
+                  className="truncate text-[11px]"
+                />
+                {isActive && (
+                  <span className="ml-auto text-[9px] text-sky-400">active</span>
+                )}
+              </div>
+            );
+          })}
+          <button
+            className="text-[11px] text-sky-600 hover:underline"
+            style={{ marginLeft: (depth + 1) * 16 + 4 }}
+            onClick={() => addDiagram(undefined, packageId)}
+          >
+            + New diagram
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Tree node ───────────────────────────────────────────────────────────────
+
 function TreeNode({
   el,
   model,
@@ -130,7 +229,8 @@ function TreeNode({
   const addDiagram = useSygil((s) => s.addDiagram);
 
   const kids = childrenOf(model, el.id);
-  const hasChildren = kids.length > 0;
+  const isPackage = el.kind === "package";
+  const hasChildren = kids.length > 0 || isPackage;
   const [open, setOpen] = useState(true);
   const isSelected = selectedId === el.id;
   const isRaw = el.kind === "raw";
@@ -141,8 +241,7 @@ function TreeNode({
         return [
           { label: "Add Package", action: () => addPackageUnder(el.id) },
           { label: "Add Part Def", action: () => addPartDefUnder(el.id) },
-          { label: "Add Diagram", action: () => addDiagram() },
-          // The root package can't be deleted; nested ones can.
+          { label: "Add Diagram", action: () => addDiagram(undefined, el.id) },
           ...(el.ownerId
             ? [{ label: "Delete", action: () => removeEl(el.id), danger: true }]
             : []),
@@ -196,82 +295,14 @@ function TreeNode({
           </span>
         )}
       </div>
-      {open &&
-        hasChildren &&
-        kids.map((child) => (
-          <TreeNode key={child.id} el={child} model={model} depth={depth + 1} onCtx={onCtx} />
-        ))}
-    </div>
-  );
-}
-
-// ── Diagrams section ────────────────────────────────────────────────────────
-
-function DiagramsSection({
-  onCtx,
-}: {
-  onCtx: (e: React.MouseEvent, items: MenuItem[]) => void;
-}) {
-  const diagrams = useSygil((s) => s.diagrams);
-  const activeDiagramId = useSygil((s) => s.activeDiagramId);
-  const setActive = useSygil((s) => s.setActiveDiagram);
-  const addDiagram = useSygil((s) => s.addDiagram);
-  const renameDiagram = useSygil((s) => s.renameDiagram);
-  const deleteDiagram = useSygil((s) => s.deleteDiagram);
-  const [open, setOpen] = useState(true);
-
-  return (
-    <div>
-      <div
-        className="flex cursor-pointer items-center gap-1 rounded-sm px-1 py-0.5 hover:bg-slate-100"
-        style={{ paddingLeft: 20 }}
-        onClick={() => setOpen((o) => !o)}
-      >
-        <ChevronIcon open={open} />
-        <FolderIcon />
-        <span className="text-[11px] font-medium text-slate-500">Diagrams</span>
-      </div>
       {open && (
         <>
-          {diagrams.map((d) => {
-            const isActive = d.id === activeDiagramId;
-            return (
-              <div
-                key={d.id}
-                className={`flex cursor-pointer items-center gap-1 rounded-sm px-1 py-0.5 ${
-                  isActive ? "bg-sky-50 font-semibold text-sky-700" : "hover:bg-slate-100"
-                }`}
-                style={{ paddingLeft: 52 }}
-                onClick={() => setActive(d.id)}
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  const items: MenuItem[] = [
-                    { label: "Rename", action: () => {/* handled by double-click */} },
-                  ];
-                  if (diagrams.length > 1) {
-                    items.push({ label: "Delete", action: () => deleteDiagram(d.id), danger: true });
-                  }
-                  onCtx(e, items);
-                }}
-              >
-                <DiagramIcon active={isActive} />
-                <EditableText
-                  value={d.name}
-                  onCommit={(n) => renameDiagram(d.id, n)}
-                  className="truncate text-[11px]"
-                />
-                {isActive && (
-                  <span className="ml-auto text-[9px] text-sky-400">active</span>
-                )}
-              </div>
-            );
-          })}
-          <button
-            className="ml-[52px] mt-0.5 text-[11px] text-sky-600 hover:underline"
-            onClick={() => addDiagram()}
-          >
-            + New diagram
-          </button>
+          {kids.map((child) => (
+            <TreeNode key={child.id} el={child} model={model} depth={depth + 1} onCtx={onCtx} />
+          ))}
+          {isPackage && (
+            <DiagramsInline packageId={el.id} depth={depth + 1} onCtx={onCtx} />
+          )}
         </>
       )}
     </div>
@@ -292,7 +323,6 @@ export function ContainmentTree() {
   return (
     <div className="relative h-full select-none text-slate-700">
       <TreeNode el={root} model={model} depth={0} onCtx={onCtx} />
-      <DiagramsSection onCtx={onCtx} />
       {ctx && <ContextMenu x={ctx.x} y={ctx.y} items={ctx.items} onClose={() => setCtx(null)} />}
     </div>
   );

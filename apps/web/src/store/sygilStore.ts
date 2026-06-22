@@ -29,6 +29,7 @@ export interface DiagramMeta {
   id: string;
   kind: "bdd";
   name: string;
+  packageId: string;
   layout: Layout;
 }
 
@@ -55,9 +56,10 @@ interface SygilState {
   addSpecialization: (specificId: string, generalId: string) => void;
   removeElement: (id: string) => void;
 
-  addDiagram: (name?: string) => void;
+  addDiagram: (name?: string, packageId?: string) => void;
   renameDiagram: (id: string, name: string) => void;
   deleteDiagram: (id: string) => void;
+  moveDiagram: (id: string, targetPackageId: string) => void;
   setActiveDiagram: (id: string) => void;
 }
 
@@ -188,6 +190,7 @@ export const useSygil = create<SygilState>((set, get) => {
       id: initialDiagramId,
       kind: "bdd",
       name: "Main BDD",
+      packageId: initial.rootId,
       layout: fullLayout(initial),
     },
   ];
@@ -205,7 +208,7 @@ export const useSygil = create<SygilState>((set, get) => {
       const resolved =
         diagrams.length > 0
           ? pruneAllDiagrams(model, diagrams)
-          : [{ id: active, kind: "bdd" as const, name: "Main BDD", layout: fullLayout(model) }];
+          : [{ id: active, kind: "bdd" as const, name: "Main BDD", packageId: model.rootId, layout: fullLayout(model) }];
       set({
         model,
         text: serialize(model),
@@ -342,13 +345,14 @@ export const useSygil = create<SygilState>((set, get) => {
       if (get().selectedId === id) set({ selectedId: null });
     },
 
-    addDiagram: (name) => {
+    addDiagram: (name, packageId) => {
       const id = shortId();
       const diagName = name ?? `BDD ${get().diagrams.length + 1}`;
+      const pkgId = packageId ?? get().model.rootId;
       set((s) => ({
         diagrams: [
           ...s.diagrams,
-          { id, kind: "bdd", name: diagName, layout: {} },
+          { id, kind: "bdd", name: diagName, packageId: pkgId, layout: {} },
         ],
         activeDiagramId: id,
       }));
@@ -373,6 +377,17 @@ export const useSygil = create<SygilState>((set, get) => {
       });
     },
 
+    moveDiagram: (id, targetPackageId) => {
+      const model = get().model;
+      const target = getElement(model, targetPackageId);
+      if (!target || target.kind !== "package") return;
+      set((s) => ({
+        diagrams: s.diagrams.map((d) =>
+          d.id === id ? { ...d, packageId: targetPackageId } : d,
+        ),
+      }));
+    },
+
     setActiveDiagram: (id) => set({ activeDiagramId: id }),
   };
 });
@@ -384,3 +399,4 @@ export function getActiveLayout(state: Pick<SygilState, "diagrams" | "activeDiag
 export function partIdByQName(model: Model, qname: string): string | undefined {
   return byQualifiedName(model)[qname];
 }
+
