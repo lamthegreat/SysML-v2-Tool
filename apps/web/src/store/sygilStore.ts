@@ -33,7 +33,7 @@ export interface DiagramMeta {
   layout: Layout;
 }
 
-interface SygilState {
+export interface SygilState {
   model: Model;
   text: string;
   errors: ParseError[];
@@ -100,20 +100,24 @@ function pruneAllDiagrams(model: Model, diagrams: DiagramMeta[]): DiagramMeta[] 
 }
 
 /**
- * Place all PartDefs from the model into a layout. Used only for the initial
- * seed diagram (which should show everything) and for `loadModel` fallback.
+ * Place a package's direct PartDefs into a layout. Used for the initial seed
+ * diagram and the `loadModel` fallback — both scoped to a single package.
  */
-function fullLayout(model: Model): Layout {
+function fullLayout(model: Model, packageId: string): Layout {
   const layout: Layout = {};
-  partDefs(model).forEach((pd, i) => {
-    layout[qualifiedName(model, pd.id)] = autoPos(i);
-  });
+  partDefs(model)
+    .filter((pd) => pd.ownerId === packageId)
+    .forEach((pd, i) => {
+      layout[qualifiedName(model, pd.id)] = autoPos(i);
+    });
   return layout;
 }
 
 /**
  * Detect PartDefs present in `after` but not in `before`, and add them to the
- * active diagram's layout with auto-placed positions.
+ * active diagram's layout — but only those owned by the active diagram's
+ * package, so a block added under one package doesn't appear on a diagram
+ * scoped to another.
  */
 function addNewElementsToActiveDiagram(
   before: Model,
@@ -121,9 +125,13 @@ function addNewElementsToActiveDiagram(
   diagrams: DiagramMeta[],
   activeDiagramId: string,
 ): DiagramMeta[] {
+  const active = diagrams.find((d) => d.id === activeDiagramId);
+  if (!active) return diagrams;
   const oldQNames = validQNames(before);
   const newParts = partDefs(after).filter(
-    (pd) => !oldQNames.has(qualifiedName(after, pd.id)),
+    (pd) =>
+      pd.ownerId === active.packageId &&
+      !oldQNames.has(qualifiedName(after, pd.id)),
   );
   if (newParts.length === 0) return diagrams;
 
@@ -191,7 +199,7 @@ export const useSygil = create<SygilState>((set, get) => {
       kind: "bdd",
       name: "Main BDD",
       packageId: initial.rootId,
-      layout: fullLayout(initial),
+      layout: fullLayout(initial, initial.rootId),
     },
   ];
 
@@ -208,7 +216,7 @@ export const useSygil = create<SygilState>((set, get) => {
       const resolved =
         diagrams.length > 0
           ? pruneAllDiagrams(model, diagrams)
-          : [{ id: active, kind: "bdd" as const, name: "Main BDD", packageId: model.rootId, layout: fullLayout(model) }];
+          : [{ id: active, kind: "bdd" as const, name: "Main BDD", packageId: model.rootId, layout: fullLayout(model, model.rootId) }];
       set({
         model,
         text: serialize(model),
@@ -246,8 +254,9 @@ export const useSygil = create<SygilState>((set, get) => {
 
     addBlock: () => {
       const model = get().model;
-      const name = uniqueChildName(model, model.rootId, "NewBlock");
-      applyFromDiagram(addPartDef(model, name, [], model.rootId).model);
+      const pkgId = activePackageIdOf(get());
+      const name = uniqueChildName(model, pkgId, "NewBlock");
+      applyFromDiagram(addPartDef(model, name, [], pkgId).model);
     },
 
     addPartDefUnder: (ownerId) => {
@@ -394,6 +403,14 @@ export const useSygil = create<SygilState>((set, get) => {
 
 export function getActiveLayout(state: Pick<SygilState, "diagrams" | "activeDiagramId">): Layout {
   return state.diagrams.find((d) => d.id === state.activeDiagramId)?.layout ?? {};
+}
+
+/** The package owned by the active diagram (falls back to the model root). */
+export function activePackageIdOf(
+  state: Pick<SygilState, "diagrams" | "activeDiagramId" | "model">,
+): string {
+  const active = state.diagrams.find((d) => d.id === state.activeDiagramId);
+  return active?.packageId ?? state.model.rootId;
 }
 
 export function partIdByQName(model: Model, qname: string): string | undefined {
