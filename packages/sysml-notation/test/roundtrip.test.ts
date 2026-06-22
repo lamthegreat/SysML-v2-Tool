@@ -91,4 +91,32 @@ describe("parse", () => {
     expect(out).toContain("part def A;");
     expect(out).toContain("part def B;");
   });
+
+  it("round-trips nested packages", () => {
+    const text = `package P {
+    package Sub {
+        part def A;
+    }
+    part def B :> Sub::A;
+}
+`;
+    const { model, errors } = parse(text);
+    expect(errors).toEqual([]);
+    expect(model).not.toBeNull();
+    // serialize(parse(text)) reproduces the canonical text exactly
+    expect(serialize(model!)).toBe(text);
+    // and the identity holds through another round-trip
+    expect(serialize(parse(serialize(model!)).model!)).toBe(serialize(model!));
+  });
+
+  it("handles empty and deeply nested packages", () => {
+    const { model, errors } = parse(
+      "package P { package Empty; package A { package B { part def C; } } }",
+    );
+    expect(errors).toEqual([]);
+    const out = serialize(model!);
+    expect(out).toContain("package Empty;");
+    expect(out).toContain("package B {");
+    expect(out).toContain("part def C;");
+  });
 });

@@ -1,9 +1,11 @@
 import { create } from "zustand";
 import {
   addAttribute,
+  addPackage,
   addPartDef,
   addPartUsage,
   byQualifiedName,
+  childrenOf,
   createModel,
   getElement,
   partDefs,
@@ -11,6 +13,7 @@ import {
   remove,
   rename,
   setSpecializations,
+  shortId,
   type Model,
 } from "@sygil/model";
 import { parse, serialize, type ParseError } from "@sygil/sysml-notation";
@@ -22,52 +25,127 @@ export interface NodePos {
 
 export type Layout = Record<string, NodePos>;
 
+export interface DiagramMeta {
+  id: string;
+  kind: "bdd";
+  name: string;
+  packageId: string;
+  layout: Layout;
+}
+
 interface SygilState {
   model: Model;
-  /** Editor buffer — may be mid-edit / not yet normalized. */
   text: string;
   errors: ParseError[];
-  /** Node positions, keyed by qualified name (the rename-stable identity key). */
-  layout: Layout;
+  diagrams: DiagramMeta[];
+  activeDiagramId: string;
   selectedId: string | null;
 
-  /** Replace the whole model + layout (e.g. after loading from a repo). */
-  loadModel: (model: Model, layout: Layout) => void;
-
-  /** Text surface → model (debounced parse handled by the editor component). */
+  loadModel: (model: Model, diagrams: DiagramMeta[]) => void;
   setTextFromEditor: (text: string) => void;
   setSelected: (id: string | null) => void;
   setNodePosition: (qname: string, pos: NodePos) => void;
 
-  // Diagram surface → model
   addBlock: () => void;
+  addPackageUnder: (ownerId: string) => void;
+  addPartDefUnder: (ownerId: string) => void;
   renameElement: (id: string, name: string) => void;
   retypeAttribute: (id: string, dataType: string) => void;
   addAttributeTo: (partId: string) => void;
   addPartTo: (partId: string) => void;
   addSpecialization: (specificId: string, generalId: string) => void;
   removeElement: (id: string) => void;
+
+  addDiagram: (name?: string, packageId?: string) => void;
+  renameDiagram: (id: string, name: string) => void;
+  deleteDiagram: (id: string) => void;
+  moveDiagram: (id: string, targetPackageId: string) => void;
+  setActiveDiagram: (id: string) => void;
 }
 
-/** Auto-place a node that has no saved position (simple 4-column cascade). */
+/** A name unique among the children of `ownerId` (e.g. "NewBlock", "NewBlock1"). */
+function uniqueChildName(model: Model, ownerId: string, base: string): string {
+  const existing = new Set(childrenOf(model, ownerId).map((c) => c.name));
+  if (!existing.has(base)) return base;
+  let i = 1;
+  while (existing.has(`${base}${i}`)) i++;
+  return `${base}${i}`;
+}
+
 function autoPos(index: number): NodePos {
   return { x: 60 + (index % 4) * 280, y: 60 + Math.floor(index / 4) * 240 };
 }
 
+/** Build a set of all valid qualified names for PartDefs in the model. */
+function validQNames(model: Model): Set<string> {
+  return new Set(partDefs(model).map((pd) => qualifiedName(model, pd.id)));
+}
+
 /**
- * Reconcile node positions against the current model, keyed by qualified name.
- * Surviving elements keep their position; new ones get auto-placed; stale keys
- * drop out. This is what preserves diagram layout across both text and diagram
- * edits (and across renames, since the store migrates the key on rename).
+ * Prune stale entries from a layout — remove keys for elements that no longer
+ * exist in the model. Does NOT add new elements (diagrams are views that show
+ * only explicitly placed elements).
  */
-function reconcileLayout(model: Model, prev: Layout): Layout {
+function pruneLayout(model: Model, layout: Layout): Layout {
+  const valid = validQNames(model);
   const next: Layout = {};
-  let placed = Object.keys(prev).length;
-  partDefs(model).forEach((pd) => {
-    const qn = qualifiedName(model, pd.id);
-    next[qn] = prev[qn] ?? autoPos(placed++);
-  });
+  for (const [qn, pos] of Object.entries(layout)) {
+    if (valid.has(qn)) next[qn] = pos;
+  }
   return next;
+}
+
+function pruneAllDiagrams(model: Model, diagrams: DiagramMeta[]): DiagramMeta[] {
+  return diagrams.map((d) => ({ ...d, layout: pruneLayout(model, d.layout) }));
+}
+
+/**
+ * Place all PartDefs from the model into a layout. Used only for the initial
+ * seed diagram (which should show everything) and for `loadModel` fallback.
+ */
+function fullLayout(model: Model): Layout {
+  const layout: Layout = {};
+  partDefs(model).forEach((pd, i) => {
+    layout[qualifiedName(model, pd.id)] = autoPos(i);
+  });
+  return layout;
+}
+
+/**
+ * Detect PartDefs present in `after` but not in `before`, and add them to the
+ * active diagram's layout with auto-placed positions.
+ */
+function addNewElementsToActiveDiagram(
+  before: Model,
+  after: Model,
+  diagrams: DiagramMeta[],
+  activeDiagramId: string,
+): DiagramMeta[] {
+  const oldQNames = validQNames(before);
+  const newParts = partDefs(after).filter(
+    (pd) => !oldQNames.has(qualifiedName(after, pd.id)),
+  );
+  if (newParts.length === 0) return diagrams;
+
+  return diagrams.map((d) => {
+    if (d.id !== activeDiagramId) return d;
+    const layout = { ...d.layout };
+    const startIndex = Object.keys(layout).length;
+    newParts.forEach((pd, i) => {
+      layout[qualifiedName(after, pd.id)] = autoPos(startIndex + i);
+    });
+    return { ...d, layout };
+  });
+}
+
+function updateActiveDiagramLayout(
+  diagrams: DiagramMeta[],
+  activeDiagramId: string,
+  updater: (prev: Layout) => Layout,
+): DiagramMeta[] {
+  return diagrams.map((d) =>
+    d.id === activeDiagramId ? { ...d, layout: updater(d.layout) } : d,
+  );
 }
 
 function seedModel(): Model {
@@ -84,55 +162,115 @@ function seedModel(): Model {
 }
 
 export const useSygil = create<SygilState>((set, get) => {
-  /** Diagram edit committed: model is truth → reserialize text (tool owns formatting). */
+  /**
+   * Apply a model mutation originating from the diagram surface. New PartDefs
+   * are placed on the active diagram only; deleted elements are pruned from all.
+   */
   const applyFromDiagram = (model: Model) =>
-    set((s) => ({
-      model,
-      text: serialize(model),
-      errors: [],
-      layout: reconcileLayout(model, s.layout),
-    }));
+    set((s) => {
+      const pruned = pruneAllDiagrams(model, s.diagrams);
+      const withNew = addNewElementsToActiveDiagram(
+        s.model,
+        model,
+        pruned,
+        s.activeDiagramId,
+      );
+      return {
+        model,
+        text: serialize(model),
+        errors: [],
+        diagrams: withNew,
+      };
+    });
 
   const initial = seedModel();
+  const initialDiagramId = shortId();
+  const initialDiagrams: DiagramMeta[] = [
+    {
+      id: initialDiagramId,
+      kind: "bdd",
+      name: "Main BDD",
+      packageId: initial.rootId,
+      layout: fullLayout(initial),
+    },
+  ];
 
   return {
     model: initial,
     text: serialize(initial),
     errors: [],
-    layout: reconcileLayout(initial, {}),
+    diagrams: initialDiagrams,
+    activeDiagramId: initialDiagramId,
     selectedId: null,
 
-    loadModel: (model, layout) =>
+    loadModel: (model, diagrams) => {
+      const active = diagrams[0]?.id ?? shortId();
+      const resolved =
+        diagrams.length > 0
+          ? pruneAllDiagrams(model, diagrams)
+          : [{ id: active, kind: "bdd" as const, name: "Main BDD", packageId: model.rootId, layout: fullLayout(model) }];
       set({
         model,
         text: serialize(model),
         errors: [],
-        layout: reconcileLayout(model, layout),
+        diagrams: resolved,
+        activeDiagramId: active,
         selectedId: null,
-      }),
+      });
+    },
 
     setTextFromEditor: (text) => {
       const { model, errors } = parse(text);
-      set((s) => ({
-        text, // keep the user's buffer; do not reformat mid-edit
-        errors,
-        // Diagram tracks the last successfully parsed model; hold steady on fatal errors.
-        model: model ?? s.model,
-        layout: model ? reconcileLayout(model, s.layout) : s.layout,
-      }));
+      set((s) => {
+        if (!model) return { text, errors };
+        const pruned = pruneAllDiagrams(model, s.diagrams);
+        const withNew = addNewElementsToActiveDiagram(
+          s.model,
+          model,
+          pruned,
+          s.activeDiagramId,
+        );
+        return { text, errors, model, diagrams: withNew };
+      });
     },
 
     setSelected: (id) => set({ selectedId: id }),
 
     setNodePosition: (qname, pos) =>
-      set((s) => ({ layout: { ...s.layout, [qname]: pos } })),
+      set((s) => ({
+        diagrams: updateActiveDiagramLayout(s.diagrams, s.activeDiagramId, (prev) => ({
+          ...prev,
+          [qname]: pos,
+        })),
+      })),
 
     addBlock: () => {
-      const existing = new Set(partDefs(get().model).map((p) => p.name));
-      let i = 1;
-      let name = "NewBlock";
-      while (existing.has(name)) name = `NewBlock${i++}`;
-      applyFromDiagram(addPartDef(get().model, name).model);
+      const model = get().model;
+      const name = uniqueChildName(model, model.rootId, "NewBlock");
+      applyFromDiagram(addPartDef(model, name, [], model.rootId).model);
+    },
+
+    addPartDefUnder: (ownerId) => {
+      const model = get().model;
+      const owner = getElement(model, ownerId);
+      if (!owner || owner.kind !== "package") return;
+      const name = uniqueChildName(model, ownerId, "NewBlock");
+      applyFromDiagram(addPartDef(model, name, [], ownerId).model);
+    },
+
+    addPackageUnder: (ownerId) => {
+      const model = get().model;
+      const owner = getElement(model, ownerId);
+      if (!owner || owner.kind !== "package") return;
+      const name = uniqueChildName(model, ownerId, "NewPackage");
+      // Packages aren't diagram nodes, so a plain model update is enough.
+      const next = addPackage(model, name, ownerId).model;
+      set((s) => ({
+        model: next,
+        text: serialize(next),
+        errors: [],
+        diagrams: pruneAllDiagrams(next, s.diagrams),
+      }));
     },
 
     renameElement: (id, name) => {
@@ -141,19 +279,23 @@ export const useSygil = create<SygilState>((set, get) => {
       const model = get().model;
       const el = getElement(model, id);
       if (!el) return;
-      // Migrate layout key so the node keeps its position across the rename.
       if (el.kind === "partDef") {
         const oldQn = qualifiedName(model, id);
         const newModel = rename(model, id, trimmed);
         const newQn = qualifiedName(newModel, id);
-        set((s) => {
-          const layout = { ...s.layout };
-          if (layout[oldQn]) {
-            layout[newQn] = layout[oldQn];
-            delete layout[oldQn];
-          }
-          return { model: newModel, text: serialize(newModel), errors: [], layout };
-        });
+        set((s) => ({
+          model: newModel,
+          text: serialize(newModel),
+          errors: [],
+          diagrams: s.diagrams.map((d) => {
+            const layout = { ...d.layout };
+            if (layout[oldQn]) {
+              layout[newQn] = layout[oldQn];
+              delete layout[oldQn];
+            }
+            return { ...d, layout };
+          }),
+        }));
         return;
       }
       applyFromDiagram(rename(model, id, trimmed));
@@ -202,10 +344,59 @@ export const useSygil = create<SygilState>((set, get) => {
       applyFromDiagram(remove(get().model, id));
       if (get().selectedId === id) set({ selectedId: null });
     },
+
+    addDiagram: (name, packageId) => {
+      const id = shortId();
+      const diagName = name ?? `BDD ${get().diagrams.length + 1}`;
+      const pkgId = packageId ?? get().model.rootId;
+      set((s) => ({
+        diagrams: [
+          ...s.diagrams,
+          { id, kind: "bdd", name: diagName, packageId: pkgId, layout: {} },
+        ],
+        activeDiagramId: id,
+      }));
+    },
+
+    renameDiagram: (id, name) => {
+      const trimmed = name.trim();
+      if (!trimmed) return;
+      set((s) => ({
+        diagrams: s.diagrams.map((d) => (d.id === id ? { ...d, name: trimmed } : d)),
+      }));
+    },
+
+    deleteDiagram: (id) => {
+      const s = get();
+      if (s.diagrams.length <= 1) return;
+      const remaining = s.diagrams.filter((d) => d.id !== id);
+      set({
+        diagrams: remaining,
+        activeDiagramId:
+          s.activeDiagramId === id ? remaining[0].id : s.activeDiagramId,
+      });
+    },
+
+    moveDiagram: (id, targetPackageId) => {
+      const model = get().model;
+      const target = getElement(model, targetPackageId);
+      if (!target || target.kind !== "package") return;
+      set((s) => ({
+        diagrams: s.diagrams.map((d) =>
+          d.id === id ? { ...d, packageId: targetPackageId } : d,
+        ),
+      }));
+    },
+
+    setActiveDiagram: (id) => set({ activeDiagramId: id }),
   };
 });
 
-/** Resolve a PartDef id from a qualified name (used by canvas connect handlers). */
+export function getActiveLayout(state: Pick<SygilState, "diagrams" | "activeDiagramId">): Layout {
+  return state.diagrams.find((d) => d.id === state.activeDiagramId)?.layout ?? {};
+}
+
 export function partIdByQName(model: Model, qname: string): string | undefined {
   return byQualifiedName(model)[qname];
 }
+

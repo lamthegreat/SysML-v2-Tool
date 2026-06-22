@@ -18,14 +18,15 @@ import {
   type AttributeUsage,
   type PartUsage,
 } from "@sygil/model";
-import { useSygil } from "../store/sygilStore.js";
+import { useSygil, getActiveLayout } from "../store/sygilStore.js";
 import { BddNode, RawNode, type BddNodeData } from "./BddNode.js";
 
 const nodeTypes = { bdd: BddNode, raw: RawNode };
 
 export function BddCanvas() {
   const model = useSygil((s) => s.model);
-  const layout = useSygil((s) => s.layout);
+  const activeDiagramId = useSygil((s) => s.activeDiagramId);
+  const layout = useSygil((s) => getActiveLayout(s));
   const setNodePosition = useSygil((s) => s.setNodePosition);
   const addSpecialization = useSygil((s) => s.addSpecialization);
   const removeElement = useSygil((s) => s.removeElement);
@@ -34,12 +35,11 @@ export function BddCanvas() {
   const nodes = useMemo<Node[]>(() => {
     const members = childrenOf(model, getRoot(model).id);
     const result: Node[] = [];
-    members.forEach((el, i) => {
+    members.forEach((el) => {
       const qn = qualifiedName(model, el.id);
-      const position = layout[qn] ?? {
-        x: 60 + (i % 4) * 280,
-        y: 60 + Math.floor(i / 4) * 240,
-      };
+      // Only render elements explicitly placed on this diagram.
+      if (!(qn in layout)) return;
+      const position = layout[qn];
       if (el.kind === "partDef") {
         const kids = childrenOf(model, el.id);
         const data: BddNodeData = {
@@ -134,6 +134,7 @@ export function BddCanvas() {
 
   return (
     <ReactFlow
+      key={activeDiagramId}
       nodes={nodes}
       edges={edges}
       nodeTypes={nodeTypes}

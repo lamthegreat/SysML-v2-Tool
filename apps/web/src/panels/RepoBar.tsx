@@ -8,7 +8,7 @@ type Mode = "local" | "github";
 
 export function RepoBar() {
   const model = useSygil((s) => s.model);
-  const layout = useSygil((s) => s.layout);
+  const diagrams = useSygil((s) => s.diagrams);
   const loadModel = useSygil((s) => s.loadModel);
   const [mode, setMode] = useState<Mode>("local");
   const [cfg, setCfg] = useState({ owner: "", repo: "", branch: "main", token: "" });
@@ -29,14 +29,14 @@ export function RepoBar() {
 
   const onSave = () =>
     run("Saving", async () => {
-      const r = await saveToRepo(provider(), model, layout);
+      const r = await saveToRepo(provider(), model, diagrams);
       return `Saved ${name} (${r.commitSha.slice(0, 7)})`;
     });
 
   const onLoad = () =>
     run("Loading", async () => {
-      const { model: m, layout: l } = await loadFromRepo(provider(), name);
-      loadModel(m, l);
+      const { model: m, diagrams: d } = await loadFromRepo(provider(), name);
+      loadModel(m, d);
       return `Loaded ${name} from repo`;
     });
 

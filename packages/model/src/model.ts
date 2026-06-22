@@ -43,6 +43,12 @@ export function partDefs(model: Model): PartDef[] {
   );
 }
 
+export function allPackages(model: Model): PackageEl[] {
+  return Object.values(model.elements).filter(
+    (e): e is PackageEl => e.kind === "package",
+  );
+}
+
 /**
  * Qualified name, `::`-separated from the root package down to `id`.
  * This is the stable key used by view metadata and cross-surface reconciliation.
@@ -83,15 +89,33 @@ export function addPartDef(
   model: Model,
   name: string,
   specializations: string[] = [],
+  ownerId: string = model.rootId,
 ): { model: Model; id: string } {
   const id = shortId();
   const el: PartDef = {
     id,
     kind: "partDef",
     name,
-    ownerId: model.rootId,
-    order: nextOrder(model, model.rootId),
+    ownerId,
+    order: nextOrder(model, ownerId),
     specializations,
+  };
+  return { model: put(model, el), id };
+}
+
+/** Add a nested package under `ownerId` (defaults to the root package). */
+export function addPackage(
+  model: Model,
+  name: string,
+  ownerId: string = model.rootId,
+): { model: Model; id: string } {
+  const id = shortId();
+  const el: PackageEl = {
+    id,
+    kind: "package",
+    name,
+    ownerId,
+    order: nextOrder(model, ownerId),
   };
   return { model: put(model, el), id };
 }

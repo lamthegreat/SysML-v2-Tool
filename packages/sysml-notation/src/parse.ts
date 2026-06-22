@@ -224,10 +224,33 @@ export function parse(src: string): ParseResult {
     expectPunct("}");
   };
 
+  const parsePackageBody = (ownerId: string): void => {
+    expectPunct("{");
+    while (!isPunct("}") && !atEof()) {
+      parseMember(ownerId);
+    }
+    // The loop exits only on `}` or EOF; tolerate a missing close at EOF so the
+    // diagram can update live while the user is mid-typing an unclosed brace.
+    if (isPunct("}")) pos++;
+  };
+
+  const parseNestedPackage = (ownerId: string): void => {
+    pos++; // 'package'
+    const id = shortId();
+    const name = expectName("package name").value;
+    add({ id, kind: "package", name, ownerId, order: nextOrder(ownerId) });
+    if (isPunct(";")) {
+      pos++;
+      return;
+    }
+    parsePackageBody(id);
+  };
+
   function parseMember(ownerId: string): void {
     const startPos = pos;
     try {
-      if (isName("part") && isName("def", 1)) parsePartDef(ownerId);
+      if (isName("package")) parseNestedPackage(ownerId);
+      else if (isName("part") && isName("def", 1)) parsePartDef(ownerId);
       else if (isName("ref") && isName("part", 1)) parsePartUsage(ownerId, true);
       else if (isName("part")) parsePartUsage(ownerId, false);
       else if (isName("attribute")) parseAttribute(ownerId);
@@ -253,11 +276,7 @@ export function parse(src: string): ParseResult {
     const pkgName = expectName("package name").value;
     const rootId = shortId();
     add({ id: rootId, kind: "package", name: pkgName, ownerId: null, order: 0 });
-    expectPunct("{");
-    while (!isPunct("}") && !atEof()) {
-      parseMember(rootId);
-    }
-    if (isPunct("}")) pos++;
+    parsePackageBody(rootId);
     return { model: { rootId, elements }, errors };
   } catch (e) {
     if (e instanceof ParseFail) {
