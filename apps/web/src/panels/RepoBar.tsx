@@ -163,6 +163,12 @@ export function RepoBar() {
             Diff
           </button>
           <button
+            onClick={() => setPanel("visual")}
+            className="rounded border border-slate-300 px-2 py-0.5 hover:bg-slate-100"
+          >
+            Visual diff
+          </button>
+          <button
             onClick={() => setPanel("pr")}
             className="rounded border border-slate-300 px-2 py-0.5 hover:bg-slate-100"
           >
@@ -176,10 +182,14 @@ export function RepoBar() {
       {panel && mode === "github" && (
         <GitPanel
           provider={provider()}
+          providerForBranch={(branch) =>
+            new GitHubProvider({ ...cfg, branch })
+          }
           branches={branches}
           currentBranch={cfg.branch}
           defaultBase={pickDefaultBase(branches, cfg.branch)}
           modelName={name}
+          headModel={model}
           initialTab={panel}
           onClose={() => setPanel(null)}
         />
