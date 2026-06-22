@@ -1,4 +1,10 @@
-import type { CommitResult, GitProvider, RepoFile } from "./types.js";
+import type {
+  CommitResult,
+  FileDiff,
+  GitProvider,
+  PullRequest,
+  RepoFile,
+} from "./types.js";
 
 export interface GitHubConfig {
   owner: string;
@@ -99,6 +105,55 @@ export class GitHubProvider implements GitProvider {
     });
 
     return { commitSha: commit.sha };
+  }
+
+  async listBranches(): Promise<string[]> {
+    const branches = await this.gh<Array<{ name: string }>>(
+      `${this.repoPath()}/branches?per_page=100`,
+    );
+    return branches.map((b) => b.name);
+  }
+
+  async createBranch(name: string, from: string): Promise<void> {
+    const ref = await this.gh<{ object: { sha: string } }>(
+      `${this.repoPath()}/git/ref/heads/${from}`,
+    );
+    await this.gh(`${this.repoPath()}/git/refs`, {
+      method: "POST",
+      body: JSON.stringify({ ref: `refs/heads/${name}`, sha: ref.object.sha }),
+    });
+  }
+
+  async createPullRequest(opts: {
+    title: string;
+    head: string;
+    base: string;
+    body?: string;
+  }): Promise<PullRequest> {
+    const pr = await this.gh<{ html_url: string; number: number }>(
+      `${this.repoPath()}/pulls`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          title: opts.title,
+          head: opts.head,
+          base: opts.base,
+          body: opts.body ?? "",
+        }),
+      },
+    );
+    return { url: pr.html_url, number: pr.number };
+  }
+
+  async compareBranches(base: string, head: string): Promise<FileDiff[]> {
+    const cmp = await this.gh<{
+      files?: Array<{ filename: string; status: string; patch?: string }>;
+    }>(`${this.repoPath()}/compare/${base}...${head}`);
+    return (cmp.files ?? []).map((f) => ({
+      path: f.filename,
+      status: f.status,
+      patch: f.patch ?? "",
+    }));
   }
 }
 

@@ -36,12 +36,16 @@ export interface DiagramMeta {
 export interface SygilState {
   model: Model;
   text: string;
+  /** Serialized text as of the last save/load — used to detect unsaved edits. */
+  savedText: string;
   errors: ParseError[];
   diagrams: DiagramMeta[];
   activeDiagramId: string;
   selectedId: string | null;
 
   loadModel: (model: Model, diagrams: DiagramMeta[]) => void;
+  /** Record the text that is now persisted (call after a successful Save). */
+  markSaved: (text: string) => void;
   setTextFromEditor: (text: string) => void;
   setSelected: (id: string | null) => void;
   setNodePosition: (qname: string, pos: NodePos) => void;
@@ -203,9 +207,12 @@ export const useSygil = create<SygilState>((set, get) => {
     },
   ];
 
+  const initialText = serialize(initial);
+
   return {
     model: initial,
-    text: serialize(initial),
+    text: initialText,
+    savedText: initialText,
     errors: [],
     diagrams: initialDiagrams,
     activeDiagramId: initialDiagramId,
@@ -217,15 +224,19 @@ export const useSygil = create<SygilState>((set, get) => {
         diagrams.length > 0
           ? pruneAllDiagrams(model, diagrams)
           : [{ id: active, kind: "bdd" as const, name: "Main BDD", packageId: model.rootId, layout: fullLayout(model, model.rootId) }];
+      const text = serialize(model);
       set({
         model,
-        text: serialize(model),
+        text,
+        savedText: text,
         errors: [],
         diagrams: resolved,
         activeDiagramId: active,
         selectedId: null,
       });
     },
+
+    markSaved: (text) => set({ savedText: text }),
 
     setTextFromEditor: (text) => {
       const { model, errors } = parse(text);
@@ -403,6 +414,11 @@ export const useSygil = create<SygilState>((set, get) => {
 
 export function getActiveLayout(state: Pick<SygilState, "diagrams" | "activeDiagramId">): Layout {
   return state.diagrams.find((d) => d.id === state.activeDiagramId)?.layout ?? {};
+}
+
+/** Whether the in-memory text differs from the last saved/loaded text. */
+export function isDirty(state: Pick<SygilState, "text" | "savedText">): boolean {
+  return state.text !== state.savedText;
 }
 
 /** The package owned by the active diagram (falls back to the model root). */
