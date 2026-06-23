@@ -4,7 +4,7 @@ import { GitHubProvider, LocalProvider, type GitProvider } from "@sygil/git";
 import { useSygil, isDirty } from "../store/sygilStore.js";
 import { loadFromRepo, saveToRepo } from "../repo/repoIO.js";
 import { GitPanel, type GitPanelTab } from "./GitPanel.js";
-import { LocalDiffPanel } from "./LocalDiffPanel.js";
+import { ReviewOverlay } from "../review/ReviewOverlay.js";
 
 type Mode = "local" | "github";
 
@@ -18,7 +18,6 @@ export function RepoBar() {
   const model = useSygil((s) => s.model);
   const diagrams = useSygil((s) => s.diagrams);
   const text = useSygil((s) => s.text);
-  const savedText = useSygil((s) => s.savedText);
   const dirty = useSygil((s) => isDirty(s));
   const loadModel = useSygil((s) => s.loadModel);
   const markSaved = useSygil((s) => s.markSaved);
@@ -27,7 +26,7 @@ export function RepoBar() {
   const [branches, setBranches] = useState<string[]>([]);
   const [status, setStatus] = useState("");
   const [panel, setPanel] = useState<GitPanelTab | null>(null);
-  const [localDiff, setLocalDiff] = useState(false);
+  const [review, setReview] = useState(false);
   const name = getRoot(model).name;
 
   const provider = (): GitProvider =>
@@ -157,17 +156,14 @@ export function RepoBar() {
         Load
       </button>
 
-      <button
-        onClick={() =>
-          mode === "github" ? setPanel("visual") : setLocalDiff(true)
-        }
-        className="rounded border border-slate-300 px-2 py-0.5 hover:bg-slate-100"
-      >
-        Visual diff
-      </button>
-
       {mode === "github" && (
         <>
+          <button
+            onClick={() => setReview(true)}
+            className="rounded border border-slate-300 px-2 py-0.5 hover:bg-slate-100"
+          >
+            Review changes
+          </button>
           <button
             onClick={() => setPanel("diff")}
             className="rounded border border-slate-300 px-2 py-0.5 hover:bg-slate-100"
@@ -188,24 +184,23 @@ export function RepoBar() {
       {panel && mode === "github" && (
         <GitPanel
           provider={provider()}
-          providerForBranch={(branch) =>
-            new GitHubProvider({ ...cfg, branch })
-          }
           branches={branches}
           currentBranch={cfg.branch}
           defaultBase={pickDefaultBase(branches, cfg.branch)}
           modelName={name}
-          headModel={model}
           initialTab={panel}
           onClose={() => setPanel(null)}
         />
       )}
 
-      {localDiff && (
-        <LocalDiffPanel
-          savedText={savedText}
-          currentModel={model}
-          onClose={() => setLocalDiff(false)}
+      {review && mode === "github" && (
+        <ReviewOverlay
+          providerForBranch={(branch) => new GitHubProvider({ ...cfg, branch })}
+          branches={branches}
+          defaultBase={pickDefaultBase(branches, cfg.branch)}
+          currentBranch={cfg.branch}
+          modelName={name}
+          onClose={() => setReview(false)}
         />
       )}
     </div>

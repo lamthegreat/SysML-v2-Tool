@@ -1,25 +1,18 @@
 import { useState } from "react";
 import type { FileDiff, GitProvider, PullRequest } from "@sygil/git";
-import type { Model } from "@sygil/model";
-import { parse } from "@sygil/sysml-notation";
 import { parsePatch, type DiffLineType } from "../repo/diff.js";
-import { VisualDiff } from "./VisualDiff.js";
 
-export type GitPanelTab = "diff" | "visual" | "pr";
+export type GitPanelTab = "diff" | "pr";
 
 interface Props {
   provider: GitProvider;
-  /** Factory to create a provider pointed at a specific branch. */
-  providerForBranch: (branch: string) => GitProvider;
   branches: string[];
   /** The branch currently loaded in the app (default PR/diff head). */
   currentBranch: string;
   /** Suggested base branch (e.g. the repo default). */
   defaultBase: string;
-  /** Model/package name — seeds the PR title and file-path lookups. */
+  /** Model/package name — seeds the PR title. */
   modelName: string;
-  /** The current in-memory model (head side of the visual diff). */
-  headModel: Model;
   initialTab: GitPanelTab;
   onClose: () => void;
 }
@@ -61,12 +54,10 @@ function DiffView({ file }: { file: FileDiff }) {
 
 export function GitPanel({
   provider,
-  providerForBranch,
   branches,
   currentBranch,
   defaultBase,
   modelName,
-  headModel,
   initialTab,
   onClose,
 }: Props) {
@@ -78,8 +69,6 @@ export function GitPanel({
 
   // text diff state
   const [files, setFiles] = useState<FileDiff[] | null>(null);
-  // visual diff state
-  const [baseModel, setBaseModel] = useState<Model | null>(null);
   // pr state
   const [title, setTitle] = useState(`Update ${modelName}`);
   const [body, setBody] = useState("");
@@ -95,27 +84,6 @@ export function GitPanel({
       const result = await provider.compareBranches(base, head);
       setFiles(result);
       setStatus(result.length ? "" : "No changes between these branches.");
-    } catch (e) {
-      setStatus(`Error: ${(e as Error).message}`);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const onVisualCompare = async () => {
-    setBusy(true);
-    setStatus("Fetching base model…");
-    setBaseModel(null);
-    try {
-      const baseProvider = providerForBranch(base);
-      const text = await baseProvider.readFile(`model/${modelName}.sysml`);
-      const { model, errors } = parse(text);
-      if (!model) {
-        setStatus(`Parse error on base: ${errors[0]?.message ?? "unknown"}`);
-        return;
-      }
-      setBaseModel(model);
-      setStatus("");
     } catch (e) {
       setStatus(`Error: ${(e as Error).message}`);
     } finally {
@@ -176,14 +144,12 @@ export function GitPanel({
       onClick={onClose}
     >
       <div
-        className={`flex max-h-[80vh] w-full flex-col rounded-lg bg-white shadow-xl ${
-          tab === "visual" ? "max-w-4xl" : "max-w-2xl"
-        }`}
+        className="flex max-h-[80vh] w-full max-w-2xl flex-col rounded-lg bg-white shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <header className="flex items-center gap-2 border-b border-slate-200 px-4 py-2">
           <div className="flex gap-1">
-            {(["diff", "visual", "pr"] as const).map((t) => (
+            {(["diff", "pr"] as const).map((t) => (
               <button
                 key={t}
                 onClick={() => setTab(t)}
@@ -191,7 +157,7 @@ export function GitPanel({
                   tab === t ? "bg-sky-100 text-sky-700" : "text-slate-500 hover:bg-slate-100"
                 }`}
               >
-                {t === "diff" ? "Text diff" : t === "visual" ? "Visual diff" : "Open PR"}
+                {t === "diff" ? "Text diff" : "Open PR"}
               </button>
             ))}
           </div>
@@ -208,9 +174,9 @@ export function GitPanel({
           <BranchSelect value={base} onChange={setBase} label="base" />
           <span className="text-slate-400">←</span>
           <BranchSelect value={head} onChange={setHead} label="compare" />
-          {(tab === "diff" || tab === "visual") && (
+          {tab === "diff" && (
             <button
-              onClick={tab === "visual" ? onVisualCompare : onCompare}
+              onClick={onCompare}
               disabled={busy}
               className="rounded bg-slate-800 px-2 py-0.5 text-xs font-medium text-white hover:bg-slate-700 disabled:opacity-50"
             >
@@ -229,21 +195,6 @@ export function GitPanel({
                 </p>
               )}
             </div>
-          ) : tab === "visual" ? (
-            baseModel ? (
-              <VisualDiff
-                baseModel={baseModel}
-                headModel={headModel}
-                baseBranch={base}
-                headBranch={head}
-              />
-            ) : (
-              !status && (
-                <p className="text-xs text-slate-400">
-                  Choose branches and Compare to see the visual model diff.
-                </p>
-              )
-            )
           ) : created ? (
             <div className="text-sm">
               <p className="mb-2 text-emerald-700">
