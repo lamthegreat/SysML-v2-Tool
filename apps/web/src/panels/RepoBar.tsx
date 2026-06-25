@@ -1,18 +1,32 @@
 import { useState } from "react";
 import { getRoot } from "@sygil/model";
 import { GitHubProvider, LocalProvider, type GitProvider } from "@sygil/git";
-import { useSygil } from "../store/sygilStore.js";
+import { useSygil, isDirty } from "../store/sygilStore.js";
 import { loadFromRepo, saveToRepo } from "../repo/repoIO.js";
+import { GitPanel, type GitPanelTab } from "./GitPanel.js";
+import { ReviewOverlay } from "../review/ReviewOverlay.js";
 
 type Mode = "local" | "github";
+
+function pickDefaultBase(branches: string[], fallback: string): string {
+  if (branches.includes("main")) return "main";
+  if (branches.includes("master")) return "master";
+  return branches[0] ?? fallback;
+}
 
 export function RepoBar() {
   const model = useSygil((s) => s.model);
   const diagrams = useSygil((s) => s.diagrams);
+  const text = useSygil((s) => s.text);
+  const dirty = useSygil((s) => isDirty(s));
   const loadModel = useSygil((s) => s.loadModel);
+  const markSaved = useSygil((s) => s.markSaved);
   const [mode, setMode] = useState<Mode>("local");
   const [cfg, setCfg] = useState({ owner: "", repo: "", branch: "main", token: "" });
+  const [branches, setBranches] = useState<string[]>([]);
   const [status, setStatus] = useState("");
+  const [panel, setPanel] = useState<GitPanelTab | null>(null);
+  const [review, setReview] = useState(false);
   const name = getRoot(model).name;
 
   const provider = (): GitProvider =>
@@ -30,14 +44,43 @@ export function RepoBar() {
   const onSave = () =>
     run("Saving", async () => {
       const r = await saveToRepo(provider(), model, diagrams);
+      markSaved(text);
       return `Saved ${name} (${r.commitSha.slice(0, 7)})`;
     });
 
-  const onLoad = () =>
+  const loadBranch = (branch: string) =>
     run("Loading", async () => {
-      const { model: m, diagrams: d } = await loadFromRepo(provider(), name);
+      const p = mode === "local" ? new LocalProvider() : new GitHubProvider({ ...cfg, branch });
+      const { model: m, diagrams: d } = await loadFromRepo(p, name);
       loadModel(m, d);
-      return `Loaded ${name} from repo`;
+      return `Loaded ${name} from ${branch}`;
+    });
+
+  const onLoad = () => loadBranch(cfg.branch);
+
+  const refreshBranches = () =>
+    run("Fetching branches", async () => {
+      const list = await provider().listBranches();
+      setBranches(list);
+      return `${list.length} branch${list.length === 1 ? "" : "es"}`;
+    });
+
+  const onSwitchBranch = (branch: string) => {
+    if (branch === cfg.branch) return;
+    if (dirty && !window.confirm("Discard unsaved changes and switch branches?"))
+      return;
+    setCfg((c) => ({ ...c, branch }));
+    loadBranch(branch);
+  };
+
+  const onCreateBranch = () =>
+    run("Creating branch", async () => {
+      const branchName = window.prompt("New branch name (from " + cfg.branch + "):");
+      if (!branchName) return "";
+      await provider().createBranch(branchName, cfg.branch);
+      setBranches((b) => [...new Set([...b, branchName])]);
+      setCfg((c) => ({ ...c, branch: branchName }));
+      return `Created and switched to ${branchName}`;
     });
 
   return (
@@ -53,7 +96,7 @@ export function RepoBar() {
 
       {mode === "github" && (
         <>
-          {(["owner", "repo", "branch"] as const).map((k) => (
+          {(["owner", "repo"] as const).map((k) => (
             <input
               key={k}
               placeholder={k}
@@ -69,6 +112,34 @@ export function RepoBar() {
             onChange={(e) => setCfg({ ...cfg, token: e.target.value })}
             className="w-24 rounded border border-slate-300 px-1 py-0.5"
           />
+          <div className="flex items-center gap-1">
+            <select
+              value={cfg.branch}
+              onChange={(e) => onSwitchBranch(e.target.value)}
+              className="max-w-[140px] rounded border border-slate-300 px-1 py-0.5"
+              title="Branch"
+            >
+              {[...new Set([cfg.branch, ...branches])].map((b) => (
+                <option key={b} value={b}>
+                  {b}
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={refreshBranches}
+              className="rounded border border-slate-300 px-1.5 py-0.5 hover:bg-slate-100"
+              title="Refresh branches"
+            >
+              ⟳
+            </button>
+            <button
+              onClick={onCreateBranch}
+              className="rounded border border-slate-300 px-1.5 py-0.5 hover:bg-slate-100"
+              title="Create branch"
+            >
+              ＋
+            </button>
+          </div>
         </>
       )}
 
@@ -76,7 +147,7 @@ export function RepoBar() {
         onClick={onSave}
         className="rounded bg-slate-800 px-2 py-0.5 font-medium text-white hover:bg-slate-700"
       >
-        Save
+        Save{dirty ? " *" : ""}
       </button>
       <button
         onClick={onLoad}
@@ -84,7 +155,54 @@ export function RepoBar() {
       >
         Load
       </button>
+
+      {mode === "github" && (
+        <>
+          <button
+            onClick={() => setReview(true)}
+            className="rounded border border-slate-300 px-2 py-0.5 hover:bg-slate-100"
+          >
+            Review changes
+          </button>
+          <button
+            onClick={() => setPanel("diff")}
+            className="rounded border border-slate-300 px-2 py-0.5 hover:bg-slate-100"
+          >
+            Text diff
+          </button>
+          <button
+            onClick={() => setPanel("pr")}
+            className="rounded border border-slate-300 px-2 py-0.5 hover:bg-slate-100"
+          >
+            Open PR
+          </button>
+        </>
+      )}
+
       {status && <span className="text-slate-500">{status}</span>}
+
+      {panel && mode === "github" && (
+        <GitPanel
+          provider={provider()}
+          branches={branches}
+          currentBranch={cfg.branch}
+          defaultBase={pickDefaultBase(branches, cfg.branch)}
+          modelName={name}
+          initialTab={panel}
+          onClose={() => setPanel(null)}
+        />
+      )}
+
+      {review && mode === "github" && (
+        <ReviewOverlay
+          providerForBranch={(branch) => new GitHubProvider({ ...cfg, branch })}
+          branches={branches}
+          defaultBase={pickDefaultBase(branches, cfg.branch)}
+          currentBranch={cfg.branch}
+          modelName={name}
+          onClose={() => setReview(false)}
+        />
+      )}
     </div>
   );
 }

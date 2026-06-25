@@ -1,4 +1,4 @@
-import type { CommitResult, GitProvider, RepoFile } from "./types.js";
+import type { CommitResult, FileDiff, GitProvider, RepoFile } from "./types.js";
 
 /**
  * Backend-free provider backed by `localStorage`. Lets the full load/save loop
@@ -40,5 +40,23 @@ export class LocalProvider implements GitProvider {
     for (const f of files) all[f.path] = f.content;
     this.write(all);
     return { commitSha: `local-${Date.now().toString(36)}` };
+  }
+
+  // The local provider models a single working copy — no branches, PRs, or
+  // server-side compare. These throw so the UI hides the collaboration controls.
+  async listBranches(): Promise<string[]> {
+    return ["main"];
+  }
+
+  async createBranch(): Promise<void> {
+    throw new Error("Branch creation is not supported by the local provider");
+  }
+
+  async createPullRequest(): Promise<never> {
+    throw new Error("Pull requests are not supported by the local provider");
+  }
+
+  async compareBranches(): Promise<FileDiff[]> {
+    throw new Error("Branch comparison is not supported by the local provider");
   }
 }
