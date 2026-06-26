@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { FileDiff, GitProvider, PullRequest } from "@sygil/git";
+import type { FileDiff, GitProvider, PullRequest } from "../git/index.js";
 import { parsePatch, type DiffLineType } from "../repo/diff.js";
 
 export type GitPanelTab = "diff" | "pr";

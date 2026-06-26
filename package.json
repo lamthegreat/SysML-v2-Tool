@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "description": "Sygil — open-source, browser-based, Git-native SysML v2 modeling tool",
-  "license": "MIT",
+  "license": "AGPL-3.0-only",
   "type": "module",
   "scripts": {
     "dev": "pnpm --filter @sygil/web dev",

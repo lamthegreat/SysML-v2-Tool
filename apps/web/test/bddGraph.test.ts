@@ -7,8 +7,7 @@ import {
   qualifiedName,
   type Model,
 } from "@sygil/model";
-import { deriveBddGraph, type BddGraphNodeData } from "../src/review/bddGraph.js";
-import type { Layout } from "../src/store/sygilStore.js";
+import { deriveBddGraph, type BddGraphNodeData, type Layout } from "@sygil/platform";
 
 function build(): { model: Model; ids: Record<string, string> } {
   let m = createModel("Root");

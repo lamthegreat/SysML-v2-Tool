@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { GitProvider } from "@sygil/git";
+import type { GitProvider } from "../git/index.js";
 import type { Model } from "@sygil/model";
 import { diffModels, type BlockDiff } from "../repo/modelDiff.js";
 import { loadFromRepo } from "../repo/repoIO.js";
-import type { DiagramMeta } from "../store/sygilStore.js";
+import type { DiagramMeta } from "../types.js";
 import { changeByQname, diagramSummaries } from "./reviewDiff.js";
 import { ReviewTree } from "./ReviewTree.js";
 import { ReviewCanvas } from "./ReviewCanvas.js";

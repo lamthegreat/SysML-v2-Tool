@@ -1,0 +1,8 @@
+Sygil Platform Edition — proprietary.
+
+This package (@sygil/platform) is NOT covered by the AGPL-3.0 license that
+applies to the rest of the Sygil repository. It contains hosted-platform-only
+features (Git/GitHub integration, branch management, diff/review) and is
+licensed separately.
+
+See ../../LICENSE-EE. Contact hello@sygil.io for licensing.

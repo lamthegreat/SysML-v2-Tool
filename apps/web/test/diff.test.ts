@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parsePatch } from "../src/repo/diff.js";
+import { parsePatch } from "@sygil/platform";
 
 describe("parsePatch", () => {
   it("classifies hunk, add, del, context, and meta lines", () => {

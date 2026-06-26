@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { LocalProvider } from "@sygil/git";
+import { LocalProvider, saveToRepo, loadFromRepo } from "@sygil/platform";
 import {
   addAttribute,
   addPartDef,
@@ -9,7 +9,6 @@ import {
   type Model,
 } from "@sygil/model";
 import { serialize } from "@sygil/sysml-notation";
-import { saveToRepo, loadFromRepo } from "../src/repo/repoIO.js";
 import type { DiagramMeta } from "../src/store/sygilStore.js";
 
 function memStorage() {

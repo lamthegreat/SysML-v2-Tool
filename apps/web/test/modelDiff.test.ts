@@ -5,7 +5,7 @@ import {
   addPartUsage,
   createModel,
 } from "@sygil/model";
-import { diffModels } from "../src/repo/modelDiff.js";
+import { diffModels } from "@sygil/platform";
 
 describe("diffModels", () => {
   it("detects added, removed, modified, and unchanged blocks", () => {

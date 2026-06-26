@@ -24,13 +24,27 @@ editor are **co-equal, editable surfaces** over one in-memory canonical model.
 |-------|---------|-------|
 | Canonical model | `@sygil/model` | Framework-agnostic; stable in-memory ids never hit `.sysml` |
 | Notation | `@sygil/sysml-notation` | Serializer + always-on subset parser (swappable) |
-| Repository | `@sygil/git` | `GitProvider` interface; GitHub + local providers |
 | Export | `@sygil/export` | `ExportAdapter` plugin contract |
 | UI | `apps/web` | Vite + React + React Flow + Tailwind + Zustand |
+| Platform (EE) | `@sygil/platform` | Hosted-only: `GitProvider` (GitHub + local), repo I/O, diff/review UI — proprietary |
 
 Key decisions: serialize-first (no Java engine, no model server); static SPA +
 direct Git-host API; qualified-name identity for view metadata and cross-surface
 reconciliation (no ids in text → clean diffs); async Git collaboration.
+
+## Editions
+
+Sygil is **open core**. The Community Edition is everything you need to model
+SysML v2 standalone, with autosave to browser `localStorage`:
+
+```bash
+pnpm dev                      # Community Edition (default)
+VITE_PLATFORM=true pnpm dev   # Platform Edition (adds git/GitHub, diff, review)
+```
+
+The hosted-platform features (Git/GitHub integration, branch management,
+diff/review) live in `@sygil/platform` and are gated behind the `VITE_PLATFORM`
+build flag. A CE build excludes that package entirely. See `.env.example`.
 
 ## Develop
 
@@ -44,4 +58,7 @@ pnpm build
 
 ## License
 
-MIT
+The core (everything except `packages/platform`) is licensed under
+**AGPL-3.0-only** — see [LICENSE](LICENSE). The hosted-platform package
+`@sygil/platform` is proprietary (Sygil Platform Edition) — see
+[LICENSE-EE](LICENSE-EE).

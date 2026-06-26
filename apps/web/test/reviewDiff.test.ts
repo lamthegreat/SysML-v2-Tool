@@ -4,8 +4,9 @@ import {
   changeByQname,
   diagramSummaries,
   packageLabel,
-} from "../src/review/reviewDiff.js";
-import type { DiagramMeta, Layout } from "../src/store/sygilStore.js";
+  type Layout,
+} from "@sygil/platform";
+import type { DiagramMeta } from "../src/store/sygilStore.js";
 
 function pos(): Layout[string] {
   return { x: 0, y: 0 };

@@ -10,7 +10,7 @@ import {
 } from "@xyflow/react";
 import { qualifiedName, type Model } from "@sygil/model";
 import type { ChangeKind } from "../repo/modelDiff.js";
-import type { Layout } from "../store/sygilStore.js";
+import type { Layout } from "../types.js";
 import { deriveBddGraph } from "./bddGraph.js";
 import { ReviewNode, ReviewRawNode } from "./ReviewNode.js";
 

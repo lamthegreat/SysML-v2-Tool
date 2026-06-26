@@ -8,7 +8,7 @@ import {
   type PartDef,
   type PartUsage,
 } from "@sygil/model";
-import type { Layout } from "../store/sygilStore.js";
+import type { Layout } from "../types.js";
 
 export interface BddGraphAttr {
   id: string;

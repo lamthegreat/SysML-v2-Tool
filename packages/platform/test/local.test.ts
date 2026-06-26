@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { LocalProvider } from "../src/local.js";
+import { LocalProvider } from "../src/git/local.js";
 
 function memStorage() {
   const m = new Map<string, string>();

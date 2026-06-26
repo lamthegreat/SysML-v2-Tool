@@ -1,6 +1,6 @@
 import type { Model } from "@sygil/model";
 import { diffModels, type ChangeKind } from "../repo/modelDiff.js";
-import type { DiagramMeta, Layout } from "../store/sygilStore.js";
+import type { DiagramMeta, Layout } from "../types.js";
 
 export type { ChangeKind };
 

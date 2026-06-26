@@ -1,7 +1,7 @@
 import { getRoot, partDefs, qualifiedName, shortId, type Model } from "@sygil/model";
 import { parse, serialize } from "@sygil/sysml-notation";
-import type { CommitResult, GitProvider } from "@sygil/git";
-import type { DiagramMeta, NodePos } from "../store/sygilStore.js";
+import type { CommitResult, GitProvider } from "../git/index.js";
+import type { DiagramMeta, NodePos } from "../types.js";
 
 interface ViewDiagram {
   id: string;

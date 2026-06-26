@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { GitHubProvider } from "../src/github.js";
+import { GitHubProvider } from "../src/git/github.js";
 
 interface Call {
   url: string;
