@@ -17,6 +17,7 @@ import {
   type Model,
 } from "@sygil/model";
 import { parse, serialize, type ParseError } from "@sygil/sysml-notation";
+import { saveLocal, loadLocal } from "../repo/localIO.js";
 
 export interface NodePos {
   x: number;
@@ -410,6 +411,21 @@ export const useSygil = create<SygilState>((set, get) => {
 
     setActiveDiagram: (id) => set({ activeDiagramId: id }),
   };
+});
+
+// --- Auto-restore from localStorage on startup ---
+const restored = loadLocal();
+if (restored) {
+  useSygil.getState().loadModel(restored.model, restored.diagrams);
+}
+
+// --- Debounced autosave (~1s after any state change) ---
+let autosaveTimer: ReturnType<typeof setTimeout> | undefined;
+useSygil.subscribe((state) => {
+  clearTimeout(autosaveTimer);
+  autosaveTimer = setTimeout(() => {
+    saveLocal(state.model, state.diagrams);
+  }, 1000);
 });
 
 export function getActiveLayout(state: Pick<SygilState, "diagrams" | "activeDiagramId">): Layout {

@@ -8,3 +8,7 @@ coverage/
 playwright-report/
 test-results/
 .vite/
+
+# Proprietary platform package — lives in a separate private repo.
+# Clone it into packages/platform/ for hosted-platform builds.
+packages/platform/

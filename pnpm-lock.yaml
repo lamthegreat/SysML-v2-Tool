@@ -26,9 +26,6 @@ importers:
       '@sygil/export':
         specifier: workspace:*
         version: link:../../packages/export
-      '@sygil/git':
-        specifier: workspace:*
-        version: link:../../packages/git
       '@sygil/model':
         specifier: workspace:*
         version: link:../../packages/model
@@ -81,8 +78,6 @@ importers:
       '@sygil/sysml-notation':
         specifier: workspace:*
         version: link:../sysml-notation
-
-  packages/git: {}
 
   packages/model: {}
 

@@ -7,7 +7,7 @@
     "paths": {
       "@sygil/model": ["../../packages/model/src/index.ts"],
       "@sygil/sysml-notation": ["../../packages/sysml-notation/src/index.ts"],
-      "@sygil/git": ["../../packages/git/src/index.ts"],
+      "@sygil/platform": ["./src/platform-stub.ts"],
       "@sygil/export": ["../../packages/export/src/index.ts"]
     }
   },

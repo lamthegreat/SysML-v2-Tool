@@ -13,7 +13,6 @@
     "@codemirror/lint": "^6.8.4",
     "@codemirror/view": "^6.36.1",
     "@sygil/export": "workspace:*",
-    "@sygil/git": "workspace:*",
     "@sygil/model": "workspace:*",
     "@sygil/sysml-notation": "workspace:*",
     "@uiw/react-codemirror": "^4.23.7",

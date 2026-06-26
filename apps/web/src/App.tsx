@@ -1,11 +1,18 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { ReactFlowProvider } from "@xyflow/react";
-import { useSygil } from "./store/sygilStore.js";
+import { useSygil, isDirty } from "./store/sygilStore.js";
 import { BddCanvas } from "./canvas/BddCanvas.js";
 import { TextEditor } from "./panels/TextEditor.js";
 import { ContainmentTree } from "./panels/ContainmentTree.js";
 import { RepoBar } from "./panels/RepoBar.js";
 import { ExportMenu } from "./panels/ExportMenu.js";
+import { PLATFORM } from "./features.js";
+
+const LazyPlatformRepoBar = PLATFORM
+  ? lazy(() =>
+      import("@sygil/platform").then((m) => ({ default: m.PlatformRepoBar })),
+    )
+  : null;
 
 export function App() {
   const addBlock = useSygil((s) => s.addBlock);
@@ -13,6 +20,12 @@ export function App() {
   const activeDiagram = useSygil((s) =>
     s.diagrams.find((d) => d.id === s.activeDiagramId),
   );
+  const model = useSygil((s) => s.model);
+  const diagrams = useSygil((s) => s.diagrams);
+  const text = useSygil((s) => s.text);
+  const dirty = useSygil((s) => isDirty(s));
+  const loadModel = useSygil((s) => s.loadModel);
+  const markSaved = useSygil((s) => s.markSaved);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   return (
@@ -44,7 +57,20 @@ export function App() {
         <div className="mx-1 h-5 w-px bg-slate-200" />
         <ExportMenu />
         <div className="mx-1 h-5 w-px bg-slate-200" />
-        <RepoBar />
+        {PLATFORM && LazyPlatformRepoBar ? (
+          <Suspense fallback={<span className="text-xs text-slate-400">Loading…</span>}>
+            <LazyPlatformRepoBar
+              model={model}
+              diagrams={diagrams}
+              text={text}
+              dirty={dirty}
+              loadModel={loadModel}
+              markSaved={markSaved}
+            />
+          </Suspense>
+        ) : (
+          <RepoBar />
+        )}
       </header>
 
       <main className="flex min-h-0 flex-1">
