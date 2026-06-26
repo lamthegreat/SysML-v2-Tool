@@ -3,8 +3,13 @@
  * `vite.config.ts` aliases `@sygil/platform` to this file so the proprietary
  * hosted-platform code is fully excluded from the CE bundle.
  *
- * The exported member exists only to satisfy the dynamic `import("@sygil/platform")`
- * in App.tsx, which is never invoked in the CE build (the call is guarded by the
- * PLATFORM flag). Types still come from the real package via tsconfig `paths`.
+ * The tsconfig `paths` also points here so tsc resolves `@sygil/platform`
+ * without the private repo being present. The exported member satisfies the
+ * dynamic `import("@sygil/platform")` in App.tsx, which is never invoked in
+ * the CE build (guarded by the PLATFORM flag).
  */
-export const PlatformRepoBar = () => null;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function PlatformRepoBar(_props: Record<string, any>): null {
+  return null;
+}

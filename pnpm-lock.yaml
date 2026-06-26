@@ -29,9 +29,6 @@ importers:
       '@sygil/model':
         specifier: workspace:*
         version: link:../../packages/model
-      '@sygil/platform':
-        specifier: workspace:*
-        version: link:../../packages/platform
       '@sygil/sysml-notation':
         specifier: workspace:*
         version: link:../../packages/sysml-notation
@@ -83,28 +80,6 @@ importers:
         version: link:../sysml-notation
 
   packages/model: {}
-
-  packages/platform:
-    dependencies:
-      '@sygil/model':
-        specifier: workspace:*
-        version: link:../model
-      '@sygil/sysml-notation':
-        specifier: workspace:*
-        version: link:../sysml-notation
-      '@xyflow/react':
-        specifier: ^12.3.6
-        version: 12.11.0(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      react:
-        specifier: ^18.3.1
-        version: 18.3.1
-    devDependencies:
-      '@types/react':
-        specifier: ^18.3.18
-        version: 18.3.31
-      '@types/react-dom':
-        specifier: ^18.3.5
-        version: 18.3.7(@types/react@18.3.31)
 
   packages/sysml-notation:
     dependencies:

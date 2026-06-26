@@ -39,12 +39,21 @@ SysML v2 standalone, with autosave to browser `localStorage`:
 
 ```bash
 pnpm dev                      # Community Edition (default)
-VITE_PLATFORM=true pnpm dev   # Platform Edition (adds git/GitHub, diff, review)
 ```
 
 The hosted-platform features (Git/GitHub integration, branch management,
-diff/review) live in `@sygil/platform` and are gated behind the `VITE_PLATFORM`
-build flag. A CE build excludes that package entirely. See `.env.example`.
+diff/review) live in a separate private `@sygil/platform` package, gated behind
+the `VITE_PLATFORM` build flag. A CE build excludes that package entirely. See
+`.env.example`.
+
+To enable the Platform Edition, clone the private `sygil-platform` repo into
+`packages/platform/` (gitignored), then run with the flag:
+
+```bash
+git clone <private-platform-repo> packages/platform
+pnpm install
+VITE_PLATFORM=true pnpm dev
+```
 
 ## Develop
 
