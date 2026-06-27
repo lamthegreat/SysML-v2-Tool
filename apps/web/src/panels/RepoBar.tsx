@@ -20,15 +20,15 @@ export function RepoBar() {
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
-      <span className="font-medium text-slate-700">{name}</span>
+    <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
+      <span className="font-medium text-slate-700 dark:text-slate-200">{name}</span>
       <button
         onClick={onSave}
-        className="rounded bg-slate-800 px-2 py-0.5 font-medium text-white hover:bg-slate-700"
+        className="rounded bg-slate-800 px-2 py-0.5 font-medium text-white hover:bg-slate-700 dark:bg-slate-200 dark:text-slate-950 dark:hover:bg-white"
       >
         Save{dirty ? " *" : ""}
       </button>
-      {status && <span className="text-slate-500">{status}</span>}
+      {status && <span className="text-slate-500 dark:text-slate-400">{status}</span>}
     </div>
   );
 }

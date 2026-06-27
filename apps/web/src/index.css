@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @import "@xyflow/react/dist/style.css";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 html,
 body,
 #root {
@@ -11,4 +13,41 @@ body,
 body {
   font-family:
     ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+:root {
+  --sygil-edge: #475569;
+  --sygil-canvas-dot: #cbd5e1;
+}
+
+.dark {
+  --sygil-edge: #94a3b8;
+  --sygil-canvas-dot: #334155;
+  color-scheme: dark;
+}
+
+.react-flow__controls {
+  box-shadow: 0 6px 18px rgb(15 23 42 / 0.12);
+}
+
+.dark .react-flow__controls {
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.35);
+}
+
+.dark .react-flow__controls-button {
+  background: #0f172a;
+  border-color: #334155;
+  color: #cbd5e1;
+}
+
+.dark .react-flow__controls-button:hover {
+  background: #1e293b;
+}
+
+.dark .react-flow__edge-textbg {
+  fill: #0f172a;
+}
+
+.dark .react-flow__edge-text {
+  fill: #cbd5e1;
 }

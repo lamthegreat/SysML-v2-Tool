@@ -15,12 +15,12 @@ const sysmlLinter = linter((view): Diagnostic[] => {
   }));
 });
 
-const theme = EditorView.theme({
+const editorTheme = EditorView.theme({
   "&": { height: "100%", fontSize: "13px" },
   ".cm-scroller": { fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" },
 });
 
-export function TextEditor() {
+export function TextEditor({ theme }: { theme: "light" | "dark" }) {
   const text = useSygil((s) => s.text);
   const setText = useSygil((s) => s.setTextFromEditor);
   return (
@@ -28,9 +28,10 @@ export function TextEditor() {
       value={text}
       height="100%"
       style={{ height: "100%" }}
-      extensions={[lintGutter(), sysmlLinter, theme, EditorView.lineWrapping]}
+      extensions={[lintGutter(), sysmlLinter, editorTheme, EditorView.lineWrapping]}
       onChange={setText}
       basicSetup={{ foldGutter: false }}
+      theme={theme}
     />
   );
 }

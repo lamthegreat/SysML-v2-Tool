@@ -22,7 +22,7 @@ import { BddNode, RawNode, type BddNodeData } from "./BddNode.js";
 
 const nodeTypes = { bdd: BddNode, raw: RawNode };
 
-export function BddCanvas() {
+export function BddCanvas({ theme }: { theme: "light" | "dark" }) {
   const model = useSygil((s) => s.model);
   const activeDiagramId = useSygil((s) => s.activeDiagramId);
   const activePackageId = useSygil((s) => activePackageIdOf(s));
@@ -102,7 +102,7 @@ export function BddCanvas() {
           target,
           label: "«specializes»",
           markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 18 },
-          style: { stroke: "#475569" },
+          style: { stroke: "var(--sygil-edge)" },
         });
       }
       // part-usage (composition) edges
@@ -156,8 +156,9 @@ export function BddCanvas() {
       deleteKeyCode={["Backspace", "Delete"]}
       fitView
       proOptions={{ hideAttribution: true }}
+      colorMode={theme}
     >
-      <Background />
+      <Background color="var(--sygil-canvas-dot)" />
       <Controls />
     </ReactFlow>
   );
