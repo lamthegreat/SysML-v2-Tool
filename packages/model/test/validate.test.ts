@@ -151,17 +151,17 @@ describe("validate", () => {
 
   // --- unresolved-attribute-type ---
 
-  it("warns on unknown attribute type", () => {
+  it("errors on unknown attribute type", () => {
     let m = createModel("P");
     const a = addPartDef(m, "A");
     m = a.model;
     m = addAttribute(m, a.id, "x", "Fubar").model;
     const ds = validate(m).filter((d) => d.code === "unresolved-attribute-type");
     expect(ds).toHaveLength(1);
-    expect(ds[0].severity).toBe("warning");
+    expect(ds[0].severity).toBe("error");
   });
 
-  it("does not warn for DATA_TYPES (ScalarValues)", () => {
+  it("does not flag ScalarValues primitive types", () => {
     let m = createModel("P");
     const a = addPartDef(m, "A");
     m = a.model;
@@ -169,6 +169,17 @@ describe("validate", () => {
     m = addAttribute(m, a.id, "b", "Integer").model;
     m = addAttribute(m, a.id, "c", "Boolean").model;
     m = addAttribute(m, a.id, "d", "String").model;
+    const ds = validate(m).filter((d) => d.code === "unresolved-attribute-type");
+    expect(ds).toEqual([]);
+  });
+
+  it("does not flag extended ScalarValues types (Natural, Complex, NumericalValue)", () => {
+    let m = createModel("P");
+    const a = addPartDef(m, "A");
+    m = a.model;
+    m = addAttribute(m, a.id, "a", "Natural").model;
+    m = addAttribute(m, a.id, "b", "Complex").model;
+    m = addAttribute(m, a.id, "c", "NumericalValue").model;
     const ds = validate(m).filter((d) => d.code === "unresolved-attribute-type");
     expect(ds).toEqual([]);
   });
