@@ -1,5 +1,6 @@
 import { childrenOf, partDefs } from "./model.js";
-import { DATA_TYPES, type Model } from "./types.js";
+import { SCALAR_VALUES } from "./standardLibrary.js";
+import { type Model } from "./types.js";
 
 export type Severity = "error" | "warning";
 
@@ -15,7 +16,7 @@ export interface Diagnostic {
  * all PartDef simple names + ScalarValues primitives (DATA_TYPES).
  */
 function resolvableNames(model: Model): Set<string> {
-  const names = new Set<string>(DATA_TYPES);
+  const names = new Set<string>(SCALAR_VALUES);
   for (const pd of partDefs(model)) {
     names.add(pd.name);
   }
@@ -163,7 +164,7 @@ function checkUnresolvedAttributeTypes(
   for (const el of Object.values(model.elements)) {
     if (el.kind === "attributeUsage" && !names.has(el.dataType)) {
       out.push({
-        severity: "warning",
+        severity: "error",
         code: "unresolved-attribute-type",
         message: `Attribute type '${el.dataType}' is not a known ScalarValues type or defined element`,
         elementId: el.id,
