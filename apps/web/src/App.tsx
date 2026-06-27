@@ -6,6 +6,7 @@ import { TextEditor } from "./panels/TextEditor.js";
 import { ContainmentTree } from "./panels/ContainmentTree.js";
 import { RepoBar } from "./panels/RepoBar.js";
 import { ExportMenu } from "./panels/ExportMenu.js";
+import { ProblemsPanel } from "./panels/ProblemsPanel.js";
 import { PLATFORM } from "./features.js";
 
 const LazyPlatformRepoBar = PLATFORM
@@ -26,6 +27,7 @@ function readInitialTheme(): Theme {
 export function App() {
   const addBlock = useSygil((s) => s.addBlock);
   const errors = useSygil((s) => s.errors);
+  const diagnostics = useSygil((s) => s.diagnostics);
   const activeDiagram = useSygil((s) =>
     s.diagrams.find((d) => d.id === s.activeDiagramId),
   );
@@ -132,8 +134,20 @@ export function App() {
 
       <main className="flex min-h-0 flex-1">
         {sidebarOpen && (
-          <aside className="w-60 shrink-0 overflow-y-auto border-r border-slate-300 bg-white py-1 dark:border-slate-800 dark:bg-slate-900">
-            <ContainmentTree />
+          <aside className="flex w-60 shrink-0 flex-col border-r border-slate-300 bg-white dark:border-slate-800 dark:bg-slate-900">
+            <div className="min-h-0 flex-1 overflow-y-auto py-1">
+              <ContainmentTree />
+            </div>
+            {diagnostics.length > 0 && (
+              <div className="border-t border-slate-200 dark:border-slate-800">
+                <div className="px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  Problems ({diagnostics.length})
+                </div>
+                <div className="max-h-40 overflow-y-auto pb-1">
+                  <ProblemsPanel />
+                </div>
+              </div>
+            )}
           </aside>
         )}
 
@@ -152,14 +166,16 @@ export function App() {
           </div>
           <div
             className={`border-t px-3 py-1 text-xs ${
-              errors.length
+              errors.length || diagnostics.length
                 ? "border-red-200 bg-red-50 text-red-700 dark:border-red-950 dark:bg-red-950/40 dark:text-red-300"
                 : "border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-500"
             }`}
           >
             {errors.length
               ? `${errors.length} parse issue${errors.length > 1 ? "s" : ""}: ${errors[0].message}`
-              : "Parsed OK — diagram in sync"}
+              : diagnostics.length
+                ? `${diagnostics.length} model issue${diagnostics.length > 1 ? "s" : ""}`
+                : "Parsed OK — diagram in sync"}
           </div>
         </section>
       </main>

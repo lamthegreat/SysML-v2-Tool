@@ -1,5 +1,6 @@
+import { useMemo } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
-import { DATA_TYPES } from "@sygil/model";
+import { childrenOf, DATA_TYPES } from "@sygil/model";
 import { useSygil } from "../store/sygilStore.js";
 import { EditableText } from "../components/EditableText.js";
 
@@ -28,6 +29,41 @@ function mult(m?: string) {
   return m ? `[${m}]` : "";
 }
 
+function DiagnosticBadge({ partId }: { partId: string }) {
+  const diagnostics = useSygil((s) => s.diagnostics);
+  const model = useSygil((s) => s.model);
+
+  const counts = useMemo(() => {
+    const childIds = new Set(childrenOf(model, partId).map((c) => c.id));
+    childIds.add(partId);
+    let errors = 0;
+    let warnings = 0;
+    for (const d of diagnostics) {
+      if (!childIds.has(d.elementId)) continue;
+      if (d.severity === "error") errors++;
+      else warnings++;
+    }
+    return { errors, warnings };
+  }, [diagnostics, model, partId]);
+
+  if (counts.errors === 0 && counts.warnings === 0) return null;
+
+  return (
+    <div className="absolute -right-1.5 -top-1.5 flex items-center gap-0.5">
+      {counts.errors > 0 && (
+        <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">
+          {counts.errors}
+        </span>
+      )}
+      {counts.warnings > 0 && (
+        <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[9px] font-bold text-white">
+          {counts.warnings}
+        </span>
+      )}
+    </div>
+  );
+}
+
 export function BddNode({ data, selected }: NodeProps) {
   const d = data as BddNodeData;
   const rename = useSygil((s) => s.renameElement);
@@ -37,12 +73,13 @@ export function BddNode({ data, selected }: NodeProps) {
 
   return (
     <div
-      className={`min-w-[180px] rounded-md border bg-white shadow-sm dark:bg-slate-900 ${
+      className={`relative min-w-[180px] rounded-md border bg-white shadow-sm dark:bg-slate-900 ${
         selected
           ? "border-sky-500 ring-2 ring-sky-200 dark:ring-sky-900"
           : "border-slate-300 dark:border-slate-700"
       }`}
     >
+      <DiagnosticBadge partId={d.partId} />
       <Handle type="target" position={Position.Top} className="!bg-slate-400" />
       <div className="rounded-t-md border-b border-slate-200 bg-slate-50 px-2 py-1 text-center dark:border-slate-800 dark:bg-slate-800">
         <div className="text-[10px] uppercase tracking-wide text-slate-400 dark:text-slate-500">

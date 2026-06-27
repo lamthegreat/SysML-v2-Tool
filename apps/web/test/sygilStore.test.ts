@@ -4,6 +4,7 @@ import {
   childrenOf,
   createModel,
   qualifiedName,
+  type Diagnostic,
   type Element,
 } from "@sygil/model";
 import { serialize, parse } from "@sygil/sysml-notation";
@@ -97,6 +98,39 @@ describe("diagram package scoping", () => {
     expect(visible).not.toContain(nestedBlock.id);
 
     expect(nestedDiagramId).not.toBe(rootDiagramId);
+  });
+
+  it("diagnostics update when a reference breaks and clears when repaired", () => {
+    // Start with a model that has a part usage referencing "Engine"
+    useSygil.getState().setTextFromEditor(
+      "package P { part def Vehicle { part engine : Engine; } part def Engine; }",
+    );
+    expect(useSygil.getState().diagnostics).toEqual([]);
+
+    // Delete Engine → unresolved-type fires
+    useSygil.getState().setTextFromEditor(
+      "package P { part def Vehicle { part engine : Engine; } }",
+    );
+    const broken = useSygil.getState().diagnostics;
+    expect(broken.some((d: Diagnostic) => d.code === "unresolved-type")).toBe(true);
+
+    // Re-add Engine → clears
+    useSygil.getState().setTextFromEditor(
+      "package P { part def Vehicle { part engine : Engine; } part def Engine; }",
+    );
+    expect(useSygil.getState().diagnostics).toEqual([]);
+  });
+
+  it("diagnostics update on diagram-surface mutations", () => {
+    reset();
+    // Seed model has no errors
+    expect(useSygil.getState().diagnostics).toEqual([]);
+
+    // Add a block, then add a part usage with an unresolvable type via text
+    useSygil.getState().setTextFromEditor(
+      "package Root { part def RootBlock; part def A { part x : Ghost; } }",
+    );
+    expect(useSygil.getState().diagnostics.some((d: Diagnostic) => d.code === "unresolved-type")).toBe(true);
   });
 
   it("nested additions still serialize and round-trip cleanly", () => {

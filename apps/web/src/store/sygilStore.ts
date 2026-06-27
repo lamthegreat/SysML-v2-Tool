@@ -14,6 +14,8 @@ import {
   rename,
   setSpecializations,
   shortId,
+  validate,
+  type Diagnostic,
   type Model,
 } from "@sygil/model";
 import { parse, serialize, type ParseError } from "@sygil/sysml-notation";
@@ -40,6 +42,7 @@ export interface SygilState {
   /** Serialized text as of the last save/load — used to detect unsaved edits. */
   savedText: string;
   errors: ParseError[];
+  diagnostics: Diagnostic[];
   diagrams: DiagramMeta[];
   activeDiagramId: string;
   selectedId: string | null;
@@ -192,6 +195,7 @@ export const useSygil = create<SygilState>((set, get) => {
         model,
         text: serialize(model),
         errors: [],
+        diagnostics: validate(model),
         diagrams: withNew,
       };
     });
@@ -215,6 +219,7 @@ export const useSygil = create<SygilState>((set, get) => {
     text: initialText,
     savedText: initialText,
     errors: [],
+    diagnostics: validate(initial),
     diagrams: initialDiagrams,
     activeDiagramId: initialDiagramId,
     selectedId: null,
@@ -231,6 +236,7 @@ export const useSygil = create<SygilState>((set, get) => {
         text,
         savedText: text,
         errors: [],
+        diagnostics: validate(model),
         diagrams: resolved,
         activeDiagramId: active,
         selectedId: null,
@@ -250,7 +256,7 @@ export const useSygil = create<SygilState>((set, get) => {
           pruned,
           s.activeDiagramId,
         );
-        return { text, errors, model, diagrams: withNew };
+        return { text, errors, model, diagnostics: validate(model), diagrams: withNew };
       });
     },
 
@@ -290,6 +296,7 @@ export const useSygil = create<SygilState>((set, get) => {
         model: next,
         text: serialize(next),
         errors: [],
+        diagnostics: validate(next),
         diagrams: pruneAllDiagrams(next, s.diagrams),
       }));
     },
