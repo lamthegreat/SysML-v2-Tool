@@ -27,17 +27,17 @@ function SubMenu({ item, onClose }: { item: MenuItem; onClose: () => void }) {
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
     >
-      <button className="flex w-full items-center justify-between px-3 py-1.5 text-left text-slate-700 hover:bg-slate-100">
+      <button className="flex w-full items-center justify-between px-3 py-1.5 text-left text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800">
         {item.label}
-        <span className="ml-2 text-[9px] text-slate-400">&#9656;</span>
+        <span className="ml-2 text-[9px] text-slate-400 dark:text-slate-500">&#9656;</span>
       </button>
       {open && (
-        <div className="absolute left-full top-0 z-50 min-w-[160px] rounded-md border border-slate-200 bg-white py-1 text-xs shadow-lg">
+        <div className="absolute left-full top-0 z-50 min-w-[160px] rounded-md border border-slate-200 bg-white py-1 text-xs shadow-lg dark:border-slate-700 dark:bg-slate-900">
           {item.children.map((child) => (
             <button
               key={child.label}
-              className={`block w-full px-3 py-1.5 text-left hover:bg-slate-100 ${
-                child.danger ? "text-red-600" : "text-slate-700"
+              className={`block w-full px-3 py-1.5 text-left hover:bg-slate-100 dark:hover:bg-slate-800 ${
+                child.danger ? "text-red-600 dark:text-red-300" : "text-slate-700 dark:text-slate-200"
               }`}
               onClick={() => {
                 child.action?.();
@@ -67,7 +67,7 @@ export function ContextMenu({ x, y, items, onClose }: Props) {
   return (
     <div
       ref={ref}
-      className="fixed z-50 min-w-[140px] rounded-md border border-slate-200 bg-white py-1 text-xs shadow-lg"
+      className="fixed z-50 min-w-[140px] rounded-md border border-slate-200 bg-white py-1 text-xs shadow-lg dark:border-slate-700 dark:bg-slate-900"
       style={{ left: x, top: y }}
     >
       {items.map((item) =>
@@ -76,8 +76,8 @@ export function ContextMenu({ x, y, items, onClose }: Props) {
         ) : (
           <button
             key={item.label}
-            className={`block w-full px-3 py-1.5 text-left hover:bg-slate-100 ${
-              item.danger ? "text-red-600" : "text-slate-700"
+            className={`block w-full px-3 py-1.5 text-left hover:bg-slate-100 dark:hover:bg-slate-800 ${
+              item.danger ? "text-red-600 dark:text-red-300" : "text-slate-700 dark:text-slate-200"
             }`}
             onClick={() => {
               item.action?.();

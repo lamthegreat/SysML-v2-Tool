@@ -37,29 +37,31 @@ export function BddNode({ data, selected }: NodeProps) {
 
   return (
     <div
-      className={`min-w-[180px] rounded-md border bg-white shadow-sm ${
-        selected ? "border-sky-500 ring-2 ring-sky-200" : "border-slate-300"
+      className={`min-w-[180px] rounded-md border bg-white shadow-sm dark:bg-slate-900 ${
+        selected
+          ? "border-sky-500 ring-2 ring-sky-200 dark:ring-sky-900"
+          : "border-slate-300 dark:border-slate-700"
       }`}
     >
       <Handle type="target" position={Position.Top} className="!bg-slate-400" />
-      <div className="rounded-t-md border-b border-slate-200 bg-slate-50 px-2 py-1 text-center">
-        <div className="text-[10px] uppercase tracking-wide text-slate-400">
+      <div className="rounded-t-md border-b border-slate-200 bg-slate-50 px-2 py-1 text-center dark:border-slate-800 dark:bg-slate-800">
+        <div className="text-[10px] uppercase tracking-wide text-slate-400 dark:text-slate-500">
           «part def»
         </div>
         <EditableText
           value={d.name}
           onCommit={(n) => rename(d.partId, n)}
-          className="font-semibold text-slate-800"
+          className="font-semibold text-slate-800 dark:text-slate-100"
         />
       </div>
 
-      <div className="border-b border-slate-100 px-2 py-1 text-xs text-slate-700">
+      <div className="border-b border-slate-100 px-2 py-1 text-xs text-slate-700 dark:border-slate-800 dark:text-slate-300">
         {d.attributes.map((a) => (
           <div key={a.id} className="flex items-center gap-1">
             <EditableText value={a.name} onCommit={(n) => rename(a.id, n)} />
-            <span className="text-slate-400">:</span>
+            <span className="text-slate-400 dark:text-slate-500">:</span>
             <select
-              className="nodrag rounded border border-transparent bg-transparent text-sky-700 hover:border-slate-300"
+              className="nodrag rounded border border-transparent bg-transparent text-sky-700 hover:border-slate-300 dark:text-sky-300 dark:hover:border-slate-600"
               value={d.attributes.find((x) => x.id === a.id)?.dataType}
               onChange={(e) => retype(a.id, e.target.value)}
             >
@@ -69,35 +71,35 @@ export function BddNode({ data, selected }: NodeProps) {
                 </option>
               ))}
             </select>
-            <span className="text-slate-500">{mult(a.multiplicity)}</span>
+            <span className="text-slate-500 dark:text-slate-400">{mult(a.multiplicity)}</span>
           </div>
         ))}
         <button
-          className="nodrag mt-0.5 text-[11px] text-sky-600 hover:underline"
+          className="nodrag mt-0.5 text-[11px] text-sky-600 hover:underline dark:text-sky-300"
           onClick={() => addAttr(d.partId)}
         >
           + attribute
         </button>
       </div>
 
-      <div className="px-2 py-1 text-xs text-slate-700">
+      <div className="px-2 py-1 text-xs text-slate-700 dark:text-slate-300">
         {d.parts.map((p) => (
           <div key={p.id} className="flex items-center gap-1">
-            <span className="text-[10px] text-slate-400">
+            <span className="text-[10px] text-slate-400 dark:text-slate-500">
               {p.isReference ? "ref part" : "part"}
             </span>
             <EditableText value={p.name} onCommit={(n) => rename(p.id, n)} />
             {p.typeName && (
               <>
-                <span className="text-slate-400">:</span>
-                <span className="text-emerald-700">{p.typeName}</span>
+                <span className="text-slate-400 dark:text-slate-500">:</span>
+                <span className="text-emerald-700 dark:text-emerald-300">{p.typeName}</span>
               </>
             )}
-            <span className="text-slate-500">{mult(p.multiplicity)}</span>
+            <span className="text-slate-500 dark:text-slate-400">{mult(p.multiplicity)}</span>
           </div>
         ))}
         <button
-          className="nodrag mt-0.5 text-[11px] text-sky-600 hover:underline"
+          className="nodrag mt-0.5 text-[11px] text-sky-600 hover:underline dark:text-sky-300"
           onClick={() => addPart(d.partId)}
         >
           + part
@@ -111,11 +113,11 @@ export function BddNode({ data, selected }: NodeProps) {
 export function RawNode({ data }: NodeProps) {
   const text = (data as { text: string }).text;
   return (
-    <div className="max-w-[260px] rounded-md border border-dashed border-amber-400 bg-amber-50 px-2 py-1">
-      <div className="text-[10px] uppercase tracking-wide text-amber-600">
+    <div className="max-w-[260px] rounded-md border border-dashed border-amber-400 bg-amber-50 px-2 py-1 dark:border-amber-500 dark:bg-amber-950/40">
+      <div className="text-[10px] uppercase tracking-wide text-amber-600 dark:text-amber-300">
         unparsed · read-only
       </div>
-      <pre className="whitespace-pre-wrap text-[11px] text-amber-900">{text}</pre>
+      <pre className="whitespace-pre-wrap text-[11px] text-amber-900 dark:text-amber-100">{text}</pre>
     </div>
   );
 }

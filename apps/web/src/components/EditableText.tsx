@@ -37,7 +37,7 @@ export function EditableText({ value, onCommit, className, title }: Props) {
           }
           e.stopPropagation();
         }}
-        className="nodrag rounded border border-sky-400 bg-white px-1 text-inherit outline-none"
+        className="nodrag rounded border border-sky-400 bg-white px-1 text-inherit outline-none dark:bg-slate-950"
         size={Math.max(draft.length, 4)}
       />
     );

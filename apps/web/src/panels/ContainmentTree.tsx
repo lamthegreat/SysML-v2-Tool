@@ -140,13 +140,13 @@ function DiagramsInline({
   return (
     <div>
       <div
-        className="flex cursor-pointer items-center gap-1 rounded-sm px-1 py-0.5 hover:bg-slate-100"
+        className="flex cursor-pointer items-center gap-1 rounded-sm px-1 py-0.5 hover:bg-slate-100 dark:hover:bg-slate-800"
         style={{ paddingLeft: depth * 16 + 4 }}
         onClick={() => setOpen((o) => !o)}
       >
         {hasDiagrams ? <ChevronIcon open={open} /> : <span className="w-3" />}
         <FolderIcon />
-        <span className="text-[11px] font-medium text-slate-500">Diagrams</span>
+        <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Diagrams</span>
       </div>
       {open && (
         <>
@@ -158,7 +158,9 @@ function DiagramsInline({
               <div
                 key={d.id}
                 className={`flex cursor-pointer items-center gap-1 rounded-sm px-1 py-0.5 ${
-                  isActive ? "bg-sky-50 font-semibold text-sky-700" : "hover:bg-slate-100"
+                  isActive
+                    ? "bg-sky-50 font-semibold text-sky-700 dark:bg-sky-950/60 dark:text-sky-200"
+                    : "hover:bg-slate-100 dark:hover:bg-slate-800"
                 }`}
                 style={{ paddingLeft: (depth + 1) * 16 + 4 }}
                 onClick={() => setActive(d.id)}
@@ -187,13 +189,13 @@ function DiagramsInline({
                   className="truncate text-[11px]"
                 />
                 {isActive && (
-                  <span className="ml-auto text-[9px] text-sky-400">active</span>
+                  <span className="ml-auto text-[9px] text-sky-400 dark:text-sky-300">active</span>
                 )}
               </div>
             );
           })}
           <button
-            className="text-[11px] text-sky-600 hover:underline"
+            className="text-[11px] text-sky-600 hover:underline dark:text-sky-300"
             style={{ marginLeft: (depth + 1) * 16 + 4 }}
             onClick={() => addDiagram(undefined, packageId)}
           >
@@ -264,8 +266,10 @@ function TreeNode({
     <div>
       <div
         className={`flex cursor-pointer items-center gap-1 rounded-sm px-1 py-0.5 ${
-          isSelected ? "bg-sky-100 text-sky-800" : "hover:bg-slate-100"
-        } ${isRaw ? "italic text-amber-700 opacity-70" : ""}`}
+          isSelected
+            ? "bg-sky-100 text-sky-800 dark:bg-sky-950/70 dark:text-sky-100"
+            : "hover:bg-slate-100 dark:hover:bg-slate-800"
+        } ${isRaw ? "italic text-amber-700 opacity-70 dark:text-amber-300" : ""}`}
         style={{ paddingLeft: depth * 16 + 4 }}
         onClick={() => {
           setSelected(el.id);
@@ -290,7 +294,7 @@ function TreeNode({
           />
         )}
         {el.kind !== "package" && el.kind !== "raw" && el.kind !== "partDef" && (
-          <span className="ml-auto truncate text-[10px] text-slate-400">
+          <span className="ml-auto truncate text-[10px] text-slate-400 dark:text-slate-500">
             {el.kind === "attributeUsage" ? el.dataType : el.kind === "partUsage" ? el.typeName ?? "" : ""}
           </span>
         )}
@@ -321,7 +325,7 @@ export function ContainmentTree() {
   }, []);
 
   return (
-    <div className="relative h-full select-none text-slate-700">
+    <div className="relative h-full select-none text-slate-700 dark:text-slate-300">
       <TreeNode el={root} model={model} depth={0} onCtx={onCtx} />
       {ctx && <ContextMenu x={ctx.x} y={ctx.y} items={ctx.items} onClose={() => setCtx(null)} />}
     </div>
